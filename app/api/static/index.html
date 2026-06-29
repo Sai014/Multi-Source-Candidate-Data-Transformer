@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Candidate Data Transformer</title>
+  <style>
+    :root {
+      --fg: #1c1e21;
+      --muted: #6b7280;
+      --line: #e3e6ea;
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --accent: #2563eb;
+      --warn-bg: #fff4e5;
+      --warn-line: #f0a14a;
+      --null-bg: #fde2e2;
+      --mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    header {
+      padding: 20px 24px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 { margin: 0; font-size: 1.25rem; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+    main { max-width: 980px; margin: 0 auto; padding: 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    h2 { font-size: 1rem; margin: 0 0 12px; }
+    label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 6px; }
+    .hint { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      resize: vertical;
+    }
+    input[type="file"] { font-size: 0.9rem; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    button {
+      font: inherit;
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    button:hover { border-color: #c7ccd3; }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    button.primary:disabled { opacity: 0.6; cursor: progress; }
+    .banner {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+    }
+    .quarantine {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-line);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .quarantine ul { margin: 8px 0 0; padding-left: 18px; }
+    .quarantine code { font-family: var(--mono); }
+    pre {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 14px;
+      border-radius: 8px;
+      overflow: auto;
+      margin: 0;
+      white-space: pre;
+    }
+    pre .nullv { background: var(--null-bg); color: #7f1d1d; border-radius: 3px; padding: 0 3px; }
+    pre .withheld { background: #fde68a; color: #713f12; border-radius: 3px; padding: 0 3px; }
+    .violations li { color: #92400e; }
+    .error {
+      background: #fde2e2;
+      border: 1px solid #ef9a9a;
+      color: #7f1d1d;
+      border-radius: 8px;
+      padding: 12px 14px;
+      white-space: pre-wrap;
+      font-size: 0.88rem;
+    }
+    .ok-note { color: var(--muted); font-size: 0.9rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Multi-Source Candidate Data Transformer</h1>
+    <p>Merge messy sources into one provenanced, confidence-scored canonical profile.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1 · Sources</h2>
+      <label for="files">Source files</label>
+      <input id="files" type="file" multiple />
+      <p class="hint">
+        Tip: select <code>samples/ats_sample.json</code>, <code>samples/resume_sample.txt</code>,
+        and <code>samples/broken_source.json</code> together to see a fused profile plus a
+        quarantined source.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>2 · Projection config</h2>
+      <label for="config">Config JSON (empty = full default canonical projection)</label>
+      <textarea id="config" placeholder="Leave empty for the full canonical schema, or load the custom example."></textarea>
+      <div class="row">
+        <button id="btn-default" type="button">Default (full schema)</button>
+        <button id="btn-custom" type="button">Custom example</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <button id="btn-run" class="primary" type="button">Transform</button>
+        <span id="status" class="ok-note"></span>
+      </div>
+    </section>
+
+    <div id="error" class="error hidden"></div>
+
+    <section id="results" class="hidden">
+      <div class="card">
+        <h2>Summary</h2>
+        <div id="banner" class="banner"></div>
+      </div>
+
+      <div class="card">
+        <h2>Quarantined sources</h2>
+        <div id="quarantine"></div>
+      </div>
+
+      <div class="card">
+        <h2>Canonical profile</h2>
+        <p class="hint"><code>null</code> / withheld fields are highlighted &mdash; the pipeline is honestly empty rather than wrong.</p>
+        <pre id="profile"></pre>
+      </div>
+
+      <div class="card">
+        <h2>Projected (config) output</h2>
+        <pre id="projected"></pre>
+      </div>
+
+      <div class="card">
+        <h2>Validation violations</h2>
+        <div id="violations"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const CUSTOM_CONFIG = {
+      "fields": [
+        { "path": "full_name", "type": "string", "required": true },
+        { "path": "primary_email", "from": "emails[0]", "type": "string", "required": true },
+        { "path": "phone", "from": "phones[0]", "type": "string", "normalize": "phone" },
+        { "path": "github", "from": "links.github", "type": "string" },
+        { "path": "skill_names", "from": "skills[].name", "type": "string[]", "normalize": "canonical" },
+        { "path": "twitter", "from": "links.other[0]", "type": "string", "required": true }
+      ],
+      "include_confidence": true,
+      "include_provenance": false,
+      "on_missing": "null"
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function highlightJson(value) {
+      const text = JSON.stringify(value, null, 2);
+      return escapeHtml(text)
+        .replace(/\bnull\b/g, '<span class="nullv">null</span>')
+        .replace(/&quot;withheld_low_confidence&quot;/g, '<span class="withheld">&quot;withheld_low_confidence&quot;</span>');
+    }
+
+    function baseName(path) {
+      const parts = String(path).split(/[\\/]/);
+      return parts[parts.length - 1] || path;
+    }
+
+    function showError(message) {
+      const box = $("error");
+      box.textContent = message;
+      box.classList.remove("hidden");
+    }
+
+    function clearError() {
+      $("error").classList.add("hidden");
+    }
+
+    function renderBanner(summary) {
+      const conf = (summary.overall_confidence === null || summary.overall_confidence === undefined)
+        ? "\u2014"
+        : Number(summary.overall_confidence).toFixed(4);
+      $("banner").textContent =
+        `${summary.profile_count} profiles \u00b7 ${summary.quarantined_count} sources quarantined \u00b7 overall_confidence ${conf}`;
+    }
+
+    function renderQuarantine(quarantined) {
+      const el = $("quarantine");
+      if (!quarantined.length) {
+        el.innerHTML = '<p class="ok-note">No sources were quarantined.</p>';
+        return;
+      }
+      const items = quarantined.map((q) =>
+        `<li><strong>${escapeHtml(baseName(q.path))}</strong> &mdash; <code>${escapeHtml(q.reason)}</code></li>`
+      ).join("");
+      el.innerHTML = `<div class="quarantine"><strong>${quarantined.length} source(s) could not be ingested:</strong><ul>${items}</ul></div>`;
+    }
+
+    function renderViolations(reports) {
+      const el = $("violations");
+      const all = [];
+      (reports || []).forEach((report, idx) => {
+        (report.violations || []).forEach((v) => {
+          all.push({ ...v, candidate: idx });
+        });
+      });
+      if (!all.length) {
+        el.innerHTML = '<p class="ok-note">No validation violations.</p>';
+        return;
+      }
+      const items = all.map((v) => {
+        const detail = v.detail ? ` (<code>${escapeHtml(v.detail)}</code>)` : "";
+        return `<li><code>${escapeHtml(v.path)}</code>: ${escapeHtml(v.reason)}${detail}</li>`;
+      }).join("");
+      el.innerHTML = `<ul class="violations">${items}</ul>`;
+    }
+
+    function render(data) {
+      renderBanner(data.summary);
+      renderQuarantine(data.quarantined || []);
+      $("profile").innerHTML = highlightJson(data.profiles || []);
+      $("projected").innerHTML = highlightJson(data.projected || []);
+      renderViolations(data.reports || []);
+      $("results").classList.remove("hidden");
+    }
+
+    async function onTransform() {
+      clearError();
+      const fileInput = $("files");
+      if (!fileInput.files.length) {
+        showError("Please select at least one source file.");
+        return;
+      }
+      const btn = $("btn-run");
+      const status = $("status");
+      btn.disabled = true;
+      status.textContent = "Transforming\u2026";
+
+      try {
+        const form = new FormData();
+        for (const file of fileInput.files) {
+          form.append("files", file);
+        }
+        form.append("config", $("config").value);
+
+        const res = await fetch("/transform", { method: "POST", body: form });
+        if (!res.ok) {
+          let detail = res.statusText;
+          try {
+            const payload = await res.json();
+            detail = typeof payload.detail === "string"
+              ? payload.detail
+              : JSON.stringify(payload.detail, null, 2);
+          } catch (_) { /* keep statusText */ }
+          showError(`Request failed (${res.status}):\n${detail}`);
+          return;
+        }
+        render(await res.json());
+      } catch (err) {
+        showError("Network error: could not reach the server. Is it running?");
+      } finally {
+        btn.disabled = false;
+        status.textContent = "";
+      }
+    }
+
+    $("btn-default").addEventListener("click", () => { $("config").value = ""; });
+    $("btn-custom").addEventListener("click", () => {
+      $("config").value = JSON.stringify(CUSTOM_CONFIG, null, 2);
+    });
+    $("btn-run").addEventListener("click", onTransform);
+  </script>
+</body>
+</html>

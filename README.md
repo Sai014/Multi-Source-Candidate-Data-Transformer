@@ -15,11 +15,6 @@ FastAPI surface.
 - Architecture is an **hourglass**: many sources fan in to one `Claim` type, then
   one fused record fans out to many views.
 
-## Status
-
-Step 0: project scaffold and tooling only. No business logic yet (normalize,
-fuse, project, validate land in later steps).
-
 ## Requirements
 
 - Python 3.11+
@@ -61,13 +56,44 @@ pytest
 uvicorn app.api.main:app --reload
 ```
 
-## Health check
+## Web UI
 
-Once the server is running:
+Start the server and open the self-contained test UI (no build step, works offline):
+
+```bash
+uvicorn app.api.main:app --reload
+# open http://127.0.0.1:8000/
+```
+
+Select one or more source files (try `samples/ats_sample.json`,
+`samples/resume_sample.txt`, and `samples/broken_source.json` together), optionally
+load the **Custom example** config, and click **Transform**. The result shows a
+summary banner, prominently highlighted quarantined sources, the canonical profile
+(with `null`/withheld fields highlighted), the projected output, and any violations.
+
+## API
+
+- `GET /health` &rarr; `{"status":"ok"}`
+- `GET /` &rarr; the test UI
+- `POST /transform` (multipart/form-data): `files` (one or more sources) and an
+  optional `config` JSON string field (empty &rarr; full default projection).
+  Returns profiles, the config projection, quarantined sources, validation reports,
+  and a summary. A bad **source** is returned quarantined (still HTTP 200); only an
+  invalid **config** is a 422.
 
 ```bash
 curl http://127.0.0.1:8000/health
 # {"status":"ok"}
+```
+
+## CLI
+
+Runs the same pipeline and emits the identical response JSON as the API:
+
+```bash
+python -m app.cli --inputs samples/ats_sample.json samples/resume_sample.txt \
+  --config samples/config_custom.json --out result.json
+# omit --config (or pass "none") for the full canonical schema; omit --out for stdout
 ```
 
 ## Layout
@@ -78,13 +104,8 @@ app/
   normalize/     # registry + normalizers
   sources/       # adapters + detection
   pipeline/      # ledger, resolve, fuse, project, validate, orchestrate
-  api/           # FastAPI app (GET /health)
-  cli.py         # thin entrypoint (stub in Step 0)
-samples/         # ats_sample.json, resume_sample.txt, broken_source.json
+  api/           # FastAPI app (/health, /transform) + static test UI
+  cli.py         # CLI entrypoint (same output as the API)
+samples/         # ats_sample.json, resume_sample.txt, broken_source.json, config_custom.json
 tests/           # pytest suite
 ```
-
-## Definition of done (Step 0)
-
-- `make lint`, `make typecheck`, `make test` run clean.
-- `GET /health` returns `{"status":"ok"}`.

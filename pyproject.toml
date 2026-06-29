@@ -67,6 +67,10 @@ select = [
     "RUF", # ruff-specific
 ]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency markers are designed to be called in argument defaults.
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Query", "fastapi.Depends"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
