@@ -112,6 +112,19 @@
     }
     .ok-note { color: var(--muted); font-size: 0.9rem; }
     .hidden { display: none; }
+    .file-list { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+    .file-list .file-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; padding: 6px 10px; font-size: 0.88rem;
+    }
+    .file-list .file-name { font-family: var(--mono); }
+    .file-list .file-size { color: var(--muted); margin-left: auto; }
+    .file-list .file-remove {
+      border: none; background: none; color: #b91c1c; cursor: pointer;
+      font-size: 1.1rem; line-height: 1; padding: 0 4px;
+    }
+    .file-list .empty { color: var(--muted); font-size: 0.88rem; }
   </style>
 </head>
 <body>
@@ -123,13 +136,18 @@
   <main>
     <section class="card">
       <h2>1 · Sources</h2>
-      <label for="files">Source files</label>
-      <input id="files" type="file" multiple />
+      <label for="files">Source files (JSON, TXT, PDF, DOCX)</label>
+      <input id="files" type="file" multiple accept=".json,.txt,.pdf,.docx,application/json,text/plain,application/pdf" />
       <p class="hint">
-        Tip: select <code>samples/ats_sample.json</code>, <code>samples/resume_sample.txt</code>,
-        and <code>samples/broken_source.json</code> together to see a fused profile plus a
-        quarantined source.
+        You can add files one at a time &mdash; each pick is added to the list below, so you
+        can mix a JSON and a PDF. Try <code>samples/ats_sample.json</code>,
+        <code>samples/resume_sample.txt</code>, and <code>samples/broken_source.json</code>
+        to see a fused profile plus a quarantined source.
       </p>
+      <div id="file-list" class="file-list"></div>
+      <div class="row">
+        <button id="btn-clear-files" type="button">Clear files</button>
+      </div>
     </section>
 
     <section class="card">
@@ -198,6 +216,47 @@
     };
 
     const $ = (id) => document.getElementById(id);
+
+    // Native file inputs replace their selection on every pick, so we accumulate
+    // chosen files here to allow adding sources one at a time (e.g. a JSON, then a PDF).
+    const selectedFiles = [];
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function renderFileList() {
+      const el = $("file-list");
+      if (!selectedFiles.length) {
+        el.innerHTML = '<p class="empty">No files selected yet.</p>';
+        return;
+      }
+      el.innerHTML = selectedFiles.map((file, i) =>
+        `<div class="file-row">
+           <span class="file-name">${escapeHtml(file.name)}</span>
+           <span class="file-size">${formatSize(file.size)}</span>
+           <button type="button" class="file-remove" data-index="${i}" title="Remove" aria-label="Remove">&times;</button>
+         </div>`
+      ).join("");
+      el.querySelectorAll(".file-remove").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          selectedFiles.splice(Number(btn.dataset.index), 1);
+          renderFileList();
+        });
+      });
+    }
+
+    function addFiles(fileList) {
+      for (const file of fileList) {
+        const dup = selectedFiles.some(
+          (f) => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
+        );
+        if (!dup) selectedFiles.push(file);
+      }
+      renderFileList();
+    }
 
     function escapeHtml(text) {
       return text
@@ -278,8 +337,7 @@
 
     async function onTransform() {
       clearError();
-      const fileInput = $("files");
-      if (!fileInput.files.length) {
+      if (!selectedFiles.length) {
         showError("Please select at least one source file.");
         return;
       }
@@ -290,7 +348,7 @@
 
       try {
         const form = new FormData();
-        for (const file of fileInput.files) {
+        for (const file of selectedFiles) {
           form.append("files", file);
         }
         form.append("config", $("config").value);
@@ -316,11 +374,22 @@
       }
     }
 
+    $("files").addEventListener("change", (event) => {
+      addFiles(event.target.files);
+      // Reset so picking the same file again (or re-opening the dialog) still fires change.
+      event.target.value = "";
+    });
+    $("btn-clear-files").addEventListener("click", () => {
+      selectedFiles.length = 0;
+      renderFileList();
+    });
     $("btn-default").addEventListener("click", () => { $("config").value = ""; });
     $("btn-custom").addEventListener("click", () => {
       $("config").value = JSON.stringify(CUSTOM_CONFIG, null, 2);
     });
     $("btn-run").addEventListener("click", onTransform);
+
+    renderFileList();
   </script>
 </body>
 </html>
