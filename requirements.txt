@@ -6,3 +6,4 @@ phonenumbers
 pdfplumber
 python-docx
 spacy
+typing-extensions>=4.6
