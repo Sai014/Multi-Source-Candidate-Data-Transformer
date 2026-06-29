@@ -1,0 +1,215 @@
+{
+  "candidate_id": "14932ce4a94ff44d203be75214095fa713b41a49",
+  "full_name": "Priya Sharma",
+  "emails": [
+    "p.sharma@workmail.com",
+    "priya.sharma@example.com"
+  ],
+  "phones": [
+    "+14155550182"
+  ],
+  "location": {
+    "city": "San Francisco",
+    "region": "California",
+    "country": "US"
+  },
+  "links": {
+    "linkedin": "https://www.linkedin.com/in/priya-sharma",
+    "github": "https://github.com/priyasharma",
+    "portfolio": null,
+    "other": []
+  },
+  "headline": null,
+  "years_experience": null,
+  "skills": [
+    {
+      "name": "AWS",
+      "confidence": 0.96,
+      "sources": [
+        "ats",
+        "resume"
+      ]
+    },
+    {
+      "name": "Apache Airflow",
+      "confidence": 0.96,
+      "sources": [
+        "ats",
+        "resume"
+      ]
+    },
+    {
+      "name": "Apache Kafka",
+      "confidence": 0.6,
+      "sources": [
+        "resume"
+      ]
+    },
+    {
+      "name": "Apache Spark",
+      "confidence": 0.96,
+      "sources": [
+        "ats",
+        "resume"
+      ]
+    },
+    {
+      "name": "Docker",
+      "confidence": 0.6,
+      "sources": [
+        "resume"
+      ]
+    },
+    {
+      "name": "Python",
+      "confidence": 0.96,
+      "sources": [
+        "ats",
+        "resume"
+      ]
+    },
+    {
+      "name": "SQL",
+      "confidence": 0.96,
+      "sources": [
+        "ats",
+        "resume"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "company": "Northwind Analytics",
+      "title": "Senior Data Engineer",
+      "start": "2021-03",
+      "end": null,
+      "summary": "Owns the batch and streaming data platform."
+    },
+    {
+      "company": "BluePeak Software",
+      "title": "Data Engineer",
+      "start": "2018-07",
+      "end": "2021-02",
+      "summary": "Built ETL pipelines for analytics products."
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of California, Berkeley",
+      "degree": "B.S.",
+      "field": "Computer Science",
+      "end_year": 2018
+    }
+  ],
+  "provenance": [
+    {
+      "field": "education",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "education",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "emails",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "emails",
+      "source": "resume",
+      "method": "regex_prose",
+      "note": null
+    },
+    {
+      "field": "emails",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "experience",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "experience",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "full_name",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "full_name",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "links",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "links",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "location",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "phones",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "phones",
+      "source": "resume",
+      "method": "regex_prose",
+      "note": null
+    },
+    {
+      "field": "phones",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "skills",
+      "source": "ats",
+      "method": "direct_map",
+      "note": null
+    },
+    {
+      "field": "skills",
+      "source": "resume",
+      "method": "structured_parse",
+      "note": null
+    },
+    {
+      "field": "years_experience",
+      "source": "resume",
+      "method": "regex_prose",
+      "note": "withheld_low_confidence"
+    }
+  ],
+  "overall_confidence": 0.9262
+}
