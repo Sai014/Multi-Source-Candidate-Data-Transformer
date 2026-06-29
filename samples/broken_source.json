@@ -1,0 +1,10 @@
+{
+  "applicantId": "A-999999",
+  "candidateName": "Broken Record",
+  "emailAddress": "not-an-email",
+  "phoneNumber": +++bad-phone+++,
+  "skillTags": ["Python", "Spark",
+  "workHistory": [
+    { "employer": "Ghost Corp", "role": }
+  ]
+  // trailing comment and missing closing brace, invalid JSON on purpose

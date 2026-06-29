@@ -1,0 +1,23 @@
+Priya Sharma
+San Francisco, CA | priya.sharma@example.com | (415) 555-0182
+LinkedIn: linkedin.com/in/priya-sharma | GitHub: github.com/priyasharma
+
+SUMMARY
+Senior data engineer with 7+ years building large-scale batch and streaming
+data platforms. Comfortable owning systems end to end, from ingestion to
+serving, with a focus on reliability and cost.
+
+EXPERIENCE
+Senior Data Engineer, Northwind Analytics — Mar 2021 to Present
+- Lead the company's batch and streaming data platform on AWS.
+- Cut pipeline costs ~30% by re-architecting Spark jobs and storage tiers.
+
+Data Engineer, BluePeak Software — Jul 2018 to Feb 2021
+- Built and maintained ETL pipelines feeding customer-facing analytics.
+- Introduced Airflow for orchestration across 40+ daily jobs.
+
+EDUCATION
+B.S. in Computer Science, University of California, Berkeley, 2018
+
+SKILLS
+Python, Apache Spark, AWS, SQL, Airflow, Kafka, Docker

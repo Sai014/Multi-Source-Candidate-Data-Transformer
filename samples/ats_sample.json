@@ -1,0 +1,41 @@
+{
+  "applicantId": "A-100294",
+  "candidateName": "Priya Sharma",
+  "emailAddress": "priya.sharma@example.com",
+  "altEmail": "p.sharma@workmail.com",
+  "phoneNumber": "+1 (415) 555-0182",
+  "currentEmployer": "Northwind Analytics",
+  "jobTitle": "Senior Data Engineer",
+  "cityName": "San Francisco",
+  "stateRegion": "California",
+  "countryName": "United States",
+  "profileLinks": {
+    "linkedinUrl": "https://www.linkedin.com/in/priya-sharma",
+    "githubUrl": "https://github.com/priyasharma"
+  },
+  "skillTags": ["Python", "Apache Spark", "AWS", "SQL", "Airflow"],
+  "workHistory": [
+    {
+      "employer": "Northwind Analytics",
+      "role": "Senior Data Engineer",
+      "startDate": "2021-03",
+      "endDate": null,
+      "notes": "Owns the batch and streaming data platform."
+    },
+    {
+      "employer": "BluePeak Software",
+      "role": "Data Engineer",
+      "startDate": "2018-07",
+      "endDate": "2021-02",
+      "notes": "Built ETL pipelines for analytics products."
+    }
+  ],
+  "educationHistory": [
+    {
+      "school": "University of California, Berkeley",
+      "credential": "B.S.",
+      "studyArea": "Computer Science",
+      "graduationYear": 2018
+    }
+  ]
+}
