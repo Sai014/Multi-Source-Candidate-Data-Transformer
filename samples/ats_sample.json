@@ -1,19 +1,20 @@
 {
   "applicantId": "A-100294",
   "candidateName": "Priya Sharma",
-  "emailAddress": "priya.sharma@example.com",
-  "altEmail": "p.sharma@workmail.com",
-  "phoneNumber": "+1 (415) 555-0182",
+  "emailAddresses": ["priya.sharma@example.com", "p.sharma@workmail.com"],
+  "mobile": "+1 (415) 555-0182",
   "currentEmployer": "Northwind Analytics",
   "jobTitle": "Senior Data Engineer",
-  "cityName": "San Francisco",
-  "stateRegion": "California",
-  "countryName": "United States",
-  "profileLinks": {
-    "linkedinUrl": "https://www.linkedin.com/in/priya-sharma",
-    "githubUrl": "https://github.com/priyasharma"
+  "location": {
+    "city": "San Francisco",
+    "region": "California",
+    "country": "United States"
   },
-  "skillTags": ["Python", "Apache Spark", "AWS", "SQL", "Airflow"],
+  "links": {
+    "linkedin": "https://www.linkedin.com/in/priya-sharma",
+    "github": "https://github.com/priyasharma"
+  },
+  "skills": ["Python", "Apache Spark", "AWS", "SQL", "Airflow"],
   "workHistory": [
     {
       "employer": "Northwind Analytics",
@@ -30,7 +31,7 @@
       "notes": "Built ETL pipelines for analytics products."
     }
   ],
-  "educationHistory": [
+  "schools": [
     {
       "school": "University of California, Berkeley",
       "credential": "B.S.",
