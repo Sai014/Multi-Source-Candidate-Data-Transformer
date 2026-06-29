@@ -1,3 +1,5 @@
 """Pipeline: ledger, resolve, fuse, project, validate, orchestrate."""
 
-__all__: list[str] = []
+from app.pipeline.ledger import ClaimLedger
+
+__all__ = ["ClaimLedger"]
