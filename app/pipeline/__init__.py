@@ -4,8 +4,9 @@ from app.pipeline.fuse import fuse
 from app.pipeline.ledger import ClaimLedger
 from app.pipeline.orchestrate import RunResult, run
 from app.pipeline.project import (
-    ProjectedValue,
+    ProjectedMeta,
     ProjectedView,
+    Projection,
     ProjectionReport,
     ResolvedValue,
     Violation,
@@ -16,8 +17,9 @@ from app.pipeline.validate import validate_view
 
 __all__ = [
     "ClaimLedger",
-    "ProjectedValue",
+    "ProjectedMeta",
     "ProjectedView",
+    "Projection",
     "ProjectionReport",
     "ResolvedValue",
     "RunResult",

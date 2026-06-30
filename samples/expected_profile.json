@@ -112,7 +112,7 @@
       "field": "education",
       "source": "resume",
       "method": "structured_parse",
-      "note": null
+      "note": "superseded"
     },
     {
       "field": "emails",
@@ -142,7 +142,7 @@
       "field": "experience",
       "source": "resume",
       "method": "structured_parse",
-      "note": null
+      "note": "superseded"
     },
     {
       "field": "full_name",

@@ -295,10 +295,28 @@ def _fuse_links(claims: Sequence[Claim]) -> tuple[Links, float, tuple[Claim, ...
     return links, _mean(confidences), tuple(claim for _, claim in items)
 
 
-def _fuse_experience(claims: Sequence[Claim]) -> tuple[list[ExperienceEntry], tuple[Claim, ...]]:
+def _prefer_direct_map(claims: Sequence[Claim]) -> tuple[list[Claim], list[Claim]]:
+    """Split structured-list claims into preferred (ATS direct-map) and superseded.
+
+    When any ``DIRECT_MAP`` claim is present it is authoritative for the field, so
+    lower-trust parsed entries (e.g. a noisy resume section) are superseded rather
+    than unioned in - this keeps experience/education clean. With no direct-map
+    claim, every claim is kept.
+    """
+    direct = [c for c in claims if c.method == ExtractionMethod.DIRECT_MAP]
+    if direct:
+        superseded = [c for c in claims if c.method is not ExtractionMethod.DIRECT_MAP]
+        return direct, superseded
+    return list(claims), []
+
+
+def _fuse_experience(
+    claims: Sequence[Claim],
+) -> tuple[list[ExperienceEntry], tuple[Claim, ...], tuple[Claim, ...]]:
+    preferred, superseded = _prefer_direct_map(claims)
     merged: dict[tuple[str, str], ExperienceEntry] = {}
     contributors: list[Claim] = []
-    for claim in claims:
+    for claim in preferred:
         entry = claim.normalized
         if not (claim.normalize_ok and isinstance(entry, ExperienceEntry)):
             continue
@@ -322,13 +340,16 @@ def _fuse_experience(claims: Sequence[Claim]) -> tuple[list[ExperienceEntry], tu
         key=lambda e: ((e.start or ""), (e.company or ""), (e.title or "")),
         reverse=True,
     )
-    return entries, tuple(contributors)
+    return entries, tuple(contributors), tuple(superseded)
 
 
-def _fuse_education(claims: Sequence[Claim]) -> tuple[list[EducationEntry], tuple[Claim, ...]]:
+def _fuse_education(
+    claims: Sequence[Claim],
+) -> tuple[list[EducationEntry], tuple[Claim, ...], tuple[Claim, ...]]:
+    preferred, superseded = _prefer_direct_map(claims)
     merged: dict[tuple[str, str, int], EducationEntry] = {}
     contributors: list[Claim] = []
-    for claim in claims:
+    for claim in preferred:
         entry = claim.normalized
         if not (claim.normalize_ok and isinstance(entry, EducationEntry)):
             continue
@@ -350,7 +371,7 @@ def _fuse_education(claims: Sequence[Claim]) -> tuple[list[EducationEntry], tupl
         key=lambda e: ((e.end_year or 0), (e.institution or "")),
         reverse=True,
     )
-    return entries, tuple(contributors)
+    return entries, tuple(contributors), tuple(superseded)
 
 
 # --------------------------------------------------------------------------- #
@@ -462,10 +483,16 @@ def fuse(cluster: Sequence[Claim]) -> CanonicalProfile:
     if any((links.linkedin, links.github, links.portfolio, links.other)):
         core_confidences.append(links_confidence)
 
-    experience, experience_contrib = _fuse_experience(by_field.get("experience", []))
+    experience, experience_contrib, experience_super = _fuse_experience(
+        by_field.get("experience", [])
+    )
     add_provenance(experience_contrib, None)
-    education, education_contrib = _fuse_education(by_field.get("education", []))
+    add_provenance(experience_super, "superseded")
+    education, education_contrib, education_super = _fuse_education(
+        by_field.get("education", [])
+    )
     add_provenance(education_contrib, None)
+    add_provenance(education_super, "superseded")
 
     candidate_id = _candidate_id(emails_out.values, links, full_name, phones_out.values)
     overall_confidence = _round(_mean(core_confidences))

@@ -48,7 +48,7 @@ def _type_ok(value: ResolvedValue, type_token: str) -> bool:
 
 
 def validate_view(view: ProjectedView, config: Config) -> ProjectionReport:
-    """Validate a projected view against the config-derived schema.
+    """Validate a projected view (bare values) against the config-derived schema.
 
     Records a ``missing_required`` violation when a required field is absent or
     null, and a ``type_mismatch`` violation when a present value does not satisfy
@@ -56,14 +56,14 @@ def validate_view(view: ProjectedView, config: Config) -> ProjectionReport:
     """
     report = ProjectionReport()
     for spec in config.fields:
-        projected = view.get(spec.path)
-        if projected is None or projected.value is None:
+        value = view.get(spec.path)
+        if value is None:
             if spec.required:
                 report.violations.append(
                     Violation(path=spec.path, reason="missing_required")
                 )
             continue
-        if not _type_ok(projected.value, spec.type):
+        if not _type_ok(value, spec.type):
             report.violations.append(
                 Violation(path=spec.path, reason="type_mismatch", detail=spec.type)
             )

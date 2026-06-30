@@ -42,10 +42,10 @@ def test_projection_view_matches_profile() -> None:
     """The default projection round-trips the fused canonical profile."""
     result = run(INPUTS, Config())
     profile = result.profiles[0]
-    view = result.projections[0]
+    values = result.projections[0].values
     dumped = profile.model_dump(mode="json")
-    assert view["full_name"].value == dumped["full_name"]
-    assert view["emails"].value == dumped["emails"]
+    assert values["full_name"] == dumped["full_name"]
+    assert values["emails"] == dumped["emails"]
 
 
 def test_no_inputs_yields_empty_result() -> None:
@@ -72,7 +72,7 @@ def test_custom_config_projection_runs_end_to_end() -> None:
     result = run(INPUTS, config)
 
     assert len(result.profiles) == 1
-    view = result.projections[0]
-    assert view["primary_email"].value == "p.sharma@workmail.com"
+    values = result.projections[0].values
+    assert values["primary_email"] == "p.sharma@workmail.com"
     reasons = {(v.path, v.reason) for v in result.reports[0].violations}
     assert ("twitter", "missing_required") in reasons

@@ -1,4 +1,8 @@
-"""Tests for config-driven projection and validation (Step 8 DoD)."""
+"""Tests for config-driven projection and validation (Step 8 DoD).
+
+Projected field values are bare (a string is a string); confidence/provenance live
+in :attr:`Projection.meta` only when those toggles are enabled.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +19,7 @@ from app.domain.models import (
     Provenance,
     Skill,
 )
-from app.pipeline.project import ProjectedValue, project
+from app.pipeline.project import ProjectedMeta, Projection, project
 from app.pipeline.validate import validate_view
 
 SAMPLES = Path(__file__).resolve().parents[1] / "samples"
@@ -53,17 +57,16 @@ def _profile() -> CanonicalProfile:
 
 
 def test_default_projection_round_trips() -> None:
-    """An empty config yields the full canonical profile, value-for-value."""
+    """An empty config yields the plain canonical schema, value-for-value (bare)."""
     profile = _profile()
-    view, report = project(profile, Config())
+    projection, report = project(profile, Config())
 
     assert report.ok
     dumped = profile.model_dump(mode="json")
-    assert set(view) == set(dumped)
-    for key, value in dumped.items():
-        assert view[key].value == value
-    assert view["full_name"].confidence is None
-    assert view["full_name"].provenance is None
+    assert projection.values == dumped
+    # The default projection emits bare values; full_name is the string itself.
+    assert projection.values["full_name"] == "Priya Sharma"
+    assert projection.meta == {}
 
 
 # --------------------------------------------------------------------------- #
@@ -77,27 +80,27 @@ def _custom_config() -> Config:
 
 
 def test_custom_config_remaps_array_index() -> None:
-    """emails[0] projects to primary_email."""
-    view, _ = project(_profile(), _custom_config())
-    assert view["primary_email"].value == "p.sharma@workmail.com"
+    """emails[0] projects to primary_email as a bare string."""
+    projection, _ = project(_profile(), _custom_config())
+    assert projection.values["primary_email"] == "p.sharma@workmail.com"
 
 
 def test_custom_config_applies_normalize() -> None:
     """A normalize token re-runs the registry function on the resolved value."""
-    view, _ = project(_profile(), _custom_config())
-    assert view["phone"].value == "+14155550182"
+    projection, _ = project(_profile(), _custom_config())
+    assert projection.values["phone"] == "+14155550182"
 
 
 def test_custom_config_maps_over_list_and_normalizes() -> None:
     """skills[].name maps to a list of names, canonicalized."""
-    view, _ = project(_profile(), _custom_config())
-    assert view["skill_names"].value == ["Python", "SQL"]
+    projection, _ = project(_profile(), _custom_config())
+    assert projection.values["skill_names"] == ["Python", "SQL"]
 
 
 def test_custom_config_toggles_confidence_on() -> None:
-    """include_confidence attaches a confidence to each projected value."""
-    view, _ = project(_profile(), _custom_config())
-    assert view["primary_email"].confidence == 0.9262
+    """include_confidence attaches a confidence in the metadata sidecar."""
+    projection, _ = project(_profile(), _custom_config())
+    assert projection.meta["primary_email"].confidence == 0.9262
 
 
 def test_missing_required_field_produces_violation() -> None:
@@ -113,11 +116,12 @@ def test_missing_required_field_produces_violation() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_confidence_toggle_off_leaves_none() -> None:
-    """Without include_confidence, projected values carry no confidence."""
+def test_confidence_toggle_off_leaves_no_meta() -> None:
+    """Without include_confidence/provenance, no metadata sidecar is emitted."""
     config = Config(fields=[FieldSpec(path="full_name", type="string")])
-    view, _ = project(_profile(), config)
-    assert view["full_name"].confidence is None
+    projection, _ = project(_profile(), config)
+    assert projection.values["full_name"] == "Priya Sharma"
+    assert projection.meta == {}
 
 
 def test_include_provenance_filters_by_root_field() -> None:
@@ -126,8 +130,8 @@ def test_include_provenance_filters_by_root_field() -> None:
         fields=[FieldSpec(path="primary_email", from_="emails[0]", type="string")],
         include_provenance=True,
     )
-    view, _ = project(_profile(), config)
-    provenance = view["primary_email"].provenance
+    projection, _ = project(_profile(), config)
+    provenance = projection.meta["primary_email"].provenance
     assert provenance is not None
     assert [p.field for p in provenance] == ["emails"]
 
@@ -138,8 +142,8 @@ def test_on_missing_omit_drops_field() -> None:
         fields=[FieldSpec(path="headline", type="string")],
         on_missing=OnMissing.OMIT,
     )
-    view, report = project(_profile(), config)
-    assert "headline" not in view
+    projection, report = project(_profile(), config)
+    assert "headline" not in projection.values
     assert report.ok
 
 
@@ -149,9 +153,9 @@ def test_on_missing_null_keeps_field_as_null() -> None:
         fields=[FieldSpec(path="headline", type="string")],
         on_missing=OnMissing.NULL,
     )
-    view, report = project(_profile(), config)
-    assert "headline" in view
-    assert view["headline"].value is None
+    projection, report = project(_profile(), config)
+    assert "headline" in projection.values
+    assert projection.values["headline"] is None
     assert report.ok
 
 
@@ -161,8 +165,8 @@ def test_on_missing_error_records_violation_and_omits() -> None:
         fields=[FieldSpec(path="headline", type="string")],
         on_missing=OnMissing.ERROR,
     )
-    view, report = project(_profile(), config)
-    assert "headline" not in view
+    projection, report = project(_profile(), config)
+    assert "headline" not in projection.values
     assert not report.ok
     assert report.violations[0].reason == "missing"
 
@@ -175,8 +179,8 @@ def test_on_missing_error_records_violation_and_omits() -> None:
 def test_validate_flags_type_mismatch() -> None:
     """A value that violates its declared type yields a type_mismatch violation."""
     config = Config(fields=[FieldSpec(path="emails", type="string")])
-    view, _ = project(_profile(), config)
-    report = validate_view(view, config)
+    projection, _ = project(_profile(), config)
+    report = validate_view(projection.values, config)
     assert not report.ok
     assert report.violations[0].reason == "type_mismatch"
 
@@ -184,8 +188,8 @@ def test_validate_flags_type_mismatch() -> None:
 def test_validate_accepts_conforming_view() -> None:
     """A conforming custom projection passes type validation for present fields."""
     config = _custom_config()
-    view, _ = project(_profile(), config)
-    report = validate_view(view, config)
+    projection, _ = project(_profile(), config)
+    report = validate_view(projection.values, config)
     type_violations = [v for v in report.violations if v.reason == "type_mismatch"]
     assert type_violations == []
 
@@ -193,23 +197,23 @@ def test_validate_accepts_conforming_view() -> None:
 def test_validate_string_list_type() -> None:
     """A string[] field accepts a list of strings."""
     config = Config(fields=[FieldSpec(path="emails", type="string[]")])
-    view, _ = project(_profile(), config)
-    report = validate_view(view, config)
+    projection, _ = project(_profile(), config)
+    report = validate_view(projection.values, config)
     assert report.ok
 
 
 def test_projection_is_deterministic() -> None:
-    """Projecting the same profile/config twice yields identical views."""
+    """Projecting the same profile/config twice yields identical views + meta."""
     config = _custom_config()
     profile = _profile()
     first, _ = project(profile, config)
     second, _ = project(profile, config)
-    assert {k: v.model_dump() for k, v in first.items()} == {
-        k: v.model_dump() for k, v in second.items()
-    }
+    assert first.model_dump() == second.model_dump()
 
 
-def test_projected_value_constructs_nested() -> None:
-    """ProjectedValue accepts nested resolved structures (a dict value)."""
-    pv = ProjectedValue(value={"city": "SF", "country": "US"})
-    assert pv.value == {"city": "SF", "country": "US"}
+def test_projection_models_construct_nested() -> None:
+    """Projection holds bare values; ProjectedMeta carries optional metadata."""
+    projection = Projection(values={"location": {"city": "SF", "country": "US"}})
+    assert projection.values["location"] == {"city": "SF", "country": "US"}
+    meta = ProjectedMeta(confidence=0.5, provenance=None)
+    assert meta.confidence == 0.5

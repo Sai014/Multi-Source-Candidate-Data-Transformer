@@ -32,7 +32,26 @@
     }
     header h1 { margin: 0; font-size: 1.25rem; }
     header p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
-    main { max-width: 980px; margin: 0 auto; padding: 24px; }
+    main { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .layout { display: flex; gap: 18px; align-items: flex-start; }
+    .left { flex: 0 0 380px; position: sticky; top: 24px; }
+    .right { flex: 1 1 auto; min-width: 0; }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      .left { position: static; flex-basis: auto; width: 100%; }
+    }
+    .switch { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+    .switch input { width: 16px; height: 16px; cursor: pointer; }
+    .tabs { display: flex; gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); }
+    .tab {
+      border: 1px solid transparent; border-bottom: none; background: none;
+      border-radius: 8px 8px 0 0; padding: 8px 14px; font-size: 0.92rem;
+      color: var(--muted); cursor: pointer;
+    }
+    .tab:hover { color: var(--fg); }
+    .tab.active { background: var(--bg); border-color: var(--line); color: var(--accent); font-weight: 600; }
+    .tab-body { padding: 16px 18px 18px; }
+    .tab-panel.hidden { display: none; }
     .card {
       background: var(--card);
       border: 1px solid var(--line);
@@ -45,7 +64,7 @@
     .hint { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
     textarea {
       width: 100%;
-      min-height: 200px;
+      min-height: 220px;
       font-family: var(--mono);
       font-size: 0.82rem;
       border: 1px solid var(--line);
@@ -134,68 +153,87 @@
   </header>
 
   <main>
-    <section class="card">
-      <h2>1 · Sources</h2>
-      <label for="files">Source files (JSON, TXT, PDF, DOCX)</label>
-      <input id="files" type="file" multiple accept=".json,.txt,.pdf,.docx,application/json,text/plain,application/pdf" />
-      <p class="hint">
-        You can add files one at a time &mdash; each pick is added to the list below, so you
-        can mix a JSON and a PDF. Try <code>samples/ats_sample.json</code>,
-        <code>samples/resume_sample.txt</code>, and <code>samples/broken_source.json</code>
-        to see a fused profile plus a quarantined source.
-      </p>
-      <div id="file-list" class="file-list"></div>
-      <div class="row">
-        <button id="btn-clear-files" type="button">Clear files</button>
-      </div>
-    </section>
+    <div class="layout">
+      <section class="left">
+        <div class="card">
+          <h2>1 · Sources</h2>
+          <label for="files">Source files (JSON, TXT, PDF, DOCX)</label>
+          <input id="files" type="file" multiple accept=".json,.txt,.pdf,.docx,application/json,text/plain,application/pdf" />
+          <p class="hint">
+            Add files one at a time &mdash; each pick is appended to the list, so you can
+            mix a JSON and a PDF.
+          </p>
+          <div id="file-list" class="file-list"></div>
+          <div class="row">
+            <button id="btn-clear-files" type="button">Clear files</button>
+          </div>
+        </div>
 
-    <section class="card">
-      <h2>2 · Projection config</h2>
-      <label for="config">Config JSON (empty = full default canonical projection)</label>
-      <textarea id="config" placeholder="Leave empty for the full canonical schema, or load the custom example."></textarea>
-      <div class="row">
-        <button id="btn-default" type="button">Default (full schema)</button>
-        <button id="btn-custom" type="button">Custom example</button>
-      </div>
-    </section>
+        <div class="card">
+          <h2>2 · Projection config</h2>
+          <label class="switch" for="config-toggle">
+            <input id="config-toggle" type="checkbox" />
+            <span>Use a custom projection config</span>
+          </label>
+          <p class="hint">
+            Off &rarr; sends an empty config (full default canonical projection).
+            On &rarr; enter a config below.
+          </p>
+          <div id="config-wrap" class="hidden">
+            <textarea id="config" placeholder="Enter projection config JSON&hellip;"></textarea>
+            <div class="row">
+              <button id="btn-custom" type="button">Load custom example</button>
+            </div>
+          </div>
+        </div>
 
-    <section class="card">
-      <div class="row">
-        <button id="btn-run" class="primary" type="button">Transform</button>
-        <span id="status" class="ok-note"></span>
-      </div>
-    </section>
+        <div class="card">
+          <div class="row">
+            <button id="btn-run" class="primary" type="button">Transform</button>
+            <span id="status" class="ok-note"></span>
+          </div>
+        </div>
+      </section>
 
-    <div id="error" class="error hidden"></div>
+      <section class="right">
+        <div id="error" class="error hidden"></div>
 
-    <section id="results" class="hidden">
-      <div class="card">
-        <h2>Summary</h2>
-        <div id="banner" class="banner"></div>
-      </div>
+        <div id="results" class="hidden">
+          <div id="banner" class="banner" style="margin-bottom: 14px;"></div>
 
-      <div class="card">
-        <h2>Quarantined sources</h2>
-        <div id="quarantine"></div>
-      </div>
+          <div class="card" style="padding: 0;">
+            <div class="tabs" role="tablist">
+              <button class="tab active" data-target="panel-canonical" role="tab" type="button">Canonical profile</button>
+              <button class="tab" data-target="panel-projected" role="tab" type="button">Projected output</button>
+            </div>
+            <div class="tab-body">
+              <div id="panel-canonical" class="tab-panel">
+                <p class="hint"><code>null</code> / withheld fields are highlighted &mdash; the pipeline is honestly empty rather than wrong.</p>
+                <pre id="profile"></pre>
+              </div>
+              <div id="panel-projected" class="tab-panel hidden">
+                <p class="hint">Bare values matching the requested schema. With no config this is the plain canonical schema.</p>
+                <pre id="projected"></pre>
+                <div id="projected-meta-card" class="hidden" style="margin-top: 14px;">
+                  <p class="hint">Per-field <code>confidence</code> / <code>provenance</code>, shown only when those toggles are on.</p>
+                  <pre id="projected-meta"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="card">
-        <h2>Canonical profile</h2>
-        <p class="hint"><code>null</code> / withheld fields are highlighted &mdash; the pipeline is honestly empty rather than wrong.</p>
-        <pre id="profile"></pre>
-      </div>
+          <div class="card">
+            <h2>Quarantined sources</h2>
+            <div id="quarantine"></div>
+          </div>
 
-      <div class="card">
-        <h2>Projected (config) output</h2>
-        <pre id="projected"></pre>
-      </div>
-
-      <div class="card">
-        <h2>Validation violations</h2>
-        <div id="violations"></div>
-      </div>
-    </section>
+          <div class="card">
+            <h2>Validation violations</h2>
+            <div id="violations"></div>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script>
@@ -331,6 +369,12 @@
       renderQuarantine(data.quarantined || []);
       $("profile").innerHTML = highlightJson(data.profiles || []);
       $("projected").innerHTML = highlightJson(data.projected || []);
+      const meta = data.projected_meta || [];
+      const hasMeta = meta.some((m) => m && Object.keys(m).length > 0);
+      $("projected-meta-card").classList.toggle("hidden", !hasMeta);
+      if (hasMeta) {
+        $("projected-meta").innerHTML = highlightJson(meta);
+      }
       renderViolations(data.reports || []);
       $("results").classList.remove("hidden");
     }
@@ -351,7 +395,9 @@
         for (const file of selectedFiles) {
           form.append("files", file);
         }
-        form.append("config", $("config").value);
+        // Toggle off -> empty config (full default canonical projection).
+        const useConfig = $("config-toggle").checked;
+        form.append("config", useConfig ? $("config").value : "");
 
         const res = await fetch("/transform", { method: "POST", body: form });
         if (!res.ok) {
@@ -383,11 +429,23 @@
       selectedFiles.length = 0;
       renderFileList();
     });
-    $("btn-default").addEventListener("click", () => { $("config").value = ""; });
+    $("config-toggle").addEventListener("change", (event) => {
+      $("config-wrap").classList.toggle("hidden", !event.target.checked);
+    });
     $("btn-custom").addEventListener("click", () => {
       $("config").value = JSON.stringify(CUSTOM_CONFIG, null, 2);
     });
     $("btn-run").addEventListener("click", onTransform);
+
+    // Result tabs: switch between the canonical profile and the projected output.
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.add("hidden"));
+        tab.classList.add("active");
+        $(tab.dataset.target).classList.remove("hidden");
+      });
+    });
 
     renderFileList();
   </script>

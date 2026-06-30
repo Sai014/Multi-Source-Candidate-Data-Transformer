@@ -1,0 +1,45 @@
+{
+  "CandidateRecord": "CR-88402",
+  "ApplicantName": "Alex Rivera",
+  "ContactInfo": {
+    "Email": "arivera.dev@email.com",
+    "Mobile": "415.555.0199",
+    "Socials": "linkedin.com/in/arivera-dev"
+  },
+  "CurrentAddress": {
+    "City": "San Francisco",
+    "State": "CA",
+    "Country": "United States"
+  },
+  "EmploymentHistory": [
+    {
+      "EmployerName": "CloudSync Technologies",
+      "PositionTitle": "Backend Engineer",
+      "StartDate": "03/2023",
+      "EndDate": "Current",
+      "RoleDescription": "Developed REST APIs using Python and Django."
+    },
+    {
+      "EmployerName": "DataFlow Inc",
+      "PositionTitle": "Junior Developer",
+      "StartDate": "07/2021",
+      "EndDate": "02/2023",
+      "RoleDescription": "Maintained internal tooling and wrote SQL scripts."
+    }
+  ],
+  "AcademicBackground": [
+    {
+      "Institution": "San Jose State University",
+      "Degree": "B.S.",
+      "Major": "Software Engineering",
+      "GradYear": 2021
+    }
+  ],
+  "SystemTags": [
+    "Python",
+    "Django",
+    "SQL",
+    "REST APIs",
+    "Git"
+  ]
+}

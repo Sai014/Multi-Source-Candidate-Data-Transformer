@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from app.domain.models import CanonicalProfile, Claim, Config
 from app.pipeline.fuse import fuse
 from app.pipeline.ledger import ClaimLedger
-from app.pipeline.project import ProjectedView, ProjectionReport, project
+from app.pipeline.project import Projection, ProjectionReport, project
 from app.pipeline.resolve import cluster
 from app.pipeline.validate import validate_view
 from app.sources import ADAPTER_REGISTRY, SourceAdapter
@@ -33,7 +33,7 @@ class RunResult(BaseModel):
     """
 
     profiles: list[CanonicalProfile] = Field(default_factory=list)
-    projections: list[ProjectedView] = Field(default_factory=list)
+    projections: list[Projection] = Field(default_factory=list)
     reports: list[ProjectionReport] = Field(default_factory=list)
     quarantined: list[QuarantineRecord] = Field(default_factory=list)
 
@@ -74,25 +74,28 @@ def run(
     active = ADAPTER_REGISTRY if adapters is None else adapters
     quarantined: list[QuarantineRecord] = []
 
-    records = _extract_records(input_paths, active, quarantined)
+    extracted = _extract_records(input_paths, active, quarantined)
+    # A source that yields no claims contributes nothing; dropping it here avoids
+    # emitting a phantom empty candidate.
+    records = [record for record in extracted if record]
 
     ledger = ClaimLedger()
     for record in records:
         ledger.extend(record)
 
     profiles: list[CanonicalProfile] = []
-    projections: list[ProjectedView] = []
+    projections: list[Projection] = []
     reports: list[ProjectionReport] = []
 
     for candidate_claims in cluster(records):
         profile = fuse(candidate_claims)
-        view, projection_report = project(profile, config)
-        schema_report = validate_view(view, config)
+        projection, projection_report = project(profile, config)
+        schema_report = validate_view(projection.values, config)
         merged = ProjectionReport(
             violations=[*projection_report.violations, *schema_report.violations]
         )
         profiles.append(profile)
-        projections.append(view)
+        projections.append(projection)
         reports.append(merged)
 
     return RunResult(

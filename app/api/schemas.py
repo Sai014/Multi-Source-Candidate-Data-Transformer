@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from app.domain.models import CanonicalProfile
 from app.pipeline.orchestrate import RunResult
-from app.pipeline.project import ProjectedValue, ProjectionReport
+from app.pipeline.project import ProjectedMeta, ProjectedView, ProjectionReport
 from app.sources.detect import QuarantineRecord
 
 
@@ -24,10 +24,16 @@ class RunSummary(BaseModel):
 
 
 class TransformResponse(BaseModel):
-    """The full response for a ``/transform`` call (and the CLI's output)."""
+    """The full response for a ``/transform`` call (and the CLI's output).
+
+    ``projected`` holds bare field values (the requested schema). ``projected_meta``
+    carries per-field confidence/provenance only when those toggles are enabled in
+    the config; it is an empty map per candidate otherwise.
+    """
 
     profiles: list[CanonicalProfile]
-    projected: list[dict[str, ProjectedValue]]
+    projected: list[ProjectedView]
+    projected_meta: list[dict[str, ProjectedMeta]]
     quarantined: list[QuarantineRecord]
     reports: list[ProjectionReport]
     summary: RunSummary
@@ -49,7 +55,8 @@ def build_transform_response(result: RunResult) -> TransformResponse:
     )
     return TransformResponse(
         profiles=result.profiles,
-        projected=result.projections,
+        projected=[projection.values for projection in result.projections],
+        projected_meta=[projection.meta for projection in result.projections],
         quarantined=result.quarantined,
         reports=result.reports,
         summary=summary,

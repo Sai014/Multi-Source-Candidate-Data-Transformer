@@ -1,6 +1,6 @@
 """Source adapters and source-type detection."""
 
-from app.sources.ats import ATS_FIELD_MAP, AtsAdapter
+from app.sources.ats import AtsAdapter
 from app.sources.base import ADAPTER_REGISTRY, SourceAdapter, register_adapter
 from app.sources.detect import (
     IngestResult,
@@ -18,7 +18,6 @@ from app.sources.resume import (
 
 __all__ = [
     "ADAPTER_REGISTRY",
-    "ATS_FIELD_MAP",
     "AtsAdapter",
     "IngestResult",
     "ProseExtractor",

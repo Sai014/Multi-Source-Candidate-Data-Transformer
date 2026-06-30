@@ -150,12 +150,25 @@ def _split_sections(lines: Sequence[str]) -> dict[str, list[str]]:
     return sections
 
 
+def _strip_skill_label(line: str) -> str:
+    """Drop a leading ``Category:`` label (e.g. ``Languages & Frameworks: ...``).
+
+    Only strips when the label precedes the first comma, so a genuine skill that
+    happens to contain a colon is left intact.
+    """
+    colon = line.find(":")
+    comma = line.find(",")
+    if colon != -1 and (comma == -1 or colon < comma):
+        return line[colon + 1 :]
+    return line
+
+
 def _parse_skills(lines: Sequence[str]) -> list[str]:
     skills: list[str] = []
     for line in lines:
-        for part in re.split(r"[,;|]", line):
+        for part in re.split(r"[,;|]", _strip_skill_label(line)):
             cleaned = part.strip()
-            if cleaned:
+            if cleaned and any(char.isalnum() for char in cleaned):
                 skills.append(cleaned)
     return _dedupe(skills)
 
@@ -196,26 +209,92 @@ def _parse_experience(lines: Sequence[str]) -> list[tuple[ExperienceEntry, str]]
     return entries
 
 
+_DEGREE_RE = re.compile(
+    r"\b(bachelor|master|associate|doctor|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?|"
+    r"ph\.?\s*d|mba|b\.?tech|m\.?tech|diploma)\b",
+    re.IGNORECASE,
+)
+_INSTITUTION_RE = re.compile(
+    r"\b(university|college|institute|institution|school|academy|polytechnic)\b",
+    re.IGNORECASE,
+)
+_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+_GRAD_NOISE_RE = re.compile(r"\b(graduat\w*|expected|gpa|cgpa)\b.*$", re.IGNORECASE)
+
+
+def _education_year(line: str) -> int | None:
+    match = _YEAR_RE.search(line)
+    return int(match.group(0)) if match else None
+
+
+def _split_degree_field(text: str) -> tuple[str, str | None]:
+    """Split ``Bachelor of Science in Software Engineering`` into degree + field."""
+    parts = re.split(r"\s+in\s+", text, maxsplit=1, flags=re.IGNORECASE)
+    degree = parts[0].strip(" ,")
+    field = parts[1].strip(" ,") if len(parts) == 2 else None
+    return degree, (field or None)
+
+
 def _parse_education(lines: Sequence[str]) -> list[tuple[EducationEntry, str]]:
+    """Pair degree and institution lines into entries, dropping graduation noise.
+
+    Handles the single-line ``Degree in Field, Institution, Year`` form, and the
+    common multi-line form where the degree and institution sit on separate lines.
+    """
     entries: list[tuple[EducationEntry, str]] = []
+    degree: str | None = None
+    field: str | None = None
+    institution: str | None = None
+    year: int | None = None
+    raws: list[str] = []
+
+    def flush() -> None:
+        nonlocal degree, field, institution, year, raws
+        if degree is not None or institution is not None:
+            entries.append((
+                EducationEntry(institution=institution, degree=degree, field=field, end_year=year),
+                " ".join(raws),
+            ))
+        degree, field, institution, year, raws = None, None, None, None, []
+
     for raw in lines:
         line = raw.strip()
         if not line:
             continue
-        match = _EDU_RE.match(line)
-        if match:
-            entry = EducationEntry(
-                institution=match.group("institution").strip(),
-                degree=match.group("degree").strip(),
-                field=match.group("field").strip(),
-                end_year=int(match.group("year")),
-            )
-            entries.append((entry, line))
+
+        single = _EDU_RE.match(line)
+        if single:
+            flush()
+            entries.append((
+                EducationEntry(
+                    institution=single.group("institution").strip(),
+                    degree=single.group("degree").strip(),
+                    field=single.group("field").strip(),
+                    end_year=int(single.group("year")),
+                ),
+                line,
+            ))
             continue
-        year_match = re.search(r"\b(\d{4})\b", line)
-        if year_match:
-            entry = EducationEntry(institution=line, end_year=int(year_match.group(1)))
-            entries.append((entry, line))
+
+        cleaned = _GRAD_NOISE_RE.sub("", line).strip(" ,-")
+        line_year = _education_year(line)
+
+        if _DEGREE_RE.search(cleaned):
+            if degree is not None or institution is not None:
+                flush()
+            degree, field = _split_degree_field(cleaned)
+            year = line_year or year
+            raws.append(line)
+        elif _INSTITUTION_RE.search(cleaned):
+            institution = cleaned
+            year = year or line_year
+            raws.append(line)
+            flush()
+        elif line_year is not None and (degree is not None or institution is not None):
+            year = year or line_year
+            raws.append(line)
+
+    flush()
     return entries
 
 

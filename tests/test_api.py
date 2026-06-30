@@ -58,7 +58,8 @@ def test_transform_shape_with_custom_config() -> None:
     assert body["summary"]["profile_count"] == 1
     assert len(body["quarantined"]) == 1
     assert body["summary"]["quarantined_count"] == 1
-    assert body["projected"][0]["primary_email"]["value"] == "p.sharma@workmail.com"
+    assert body["projected"][0]["primary_email"] == "p.sharma@workmail.com"
+    assert body["projected_meta"][0]["primary_email"]["confidence"] is not None
 
 
 def test_bad_config_json_is_422() -> None:
@@ -100,7 +101,7 @@ def test_default_config_round_trips() -> None:
     )
     assert res.status_code == 200
     projected = res.json()["projected"][0]
-    assert projected["full_name"]["value"] == "Priya Sharma"
+    assert projected["full_name"] == "Priya Sharma"
 
 
 def _normalize_paths(payload: dict[str, Any]) -> dict[str, Any]:

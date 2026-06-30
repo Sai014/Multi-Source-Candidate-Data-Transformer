@@ -6,7 +6,13 @@ specific field name. It resolves each requested field from the profile, optional
 re-normalizes it through the shared registry, applies the missing-value policy, and
 attaches confidence/provenance when toggled on.
 
-A null or empty config yields the full default canonical projection.
+Projected field values are *bare* (a string is a string, a list is a list) so they
+match the requested schema and validate cleanly. When ``include_confidence`` or
+``include_provenance`` is set, that metadata is returned in a separate ``meta`` map
+keyed by the same field path - never wrapped around the value.
+
+A null or empty config yields the full default canonical projection (the plain
+canonical schema).
 """
 
 from __future__ import annotations
@@ -34,15 +40,22 @@ ResolvedValue = TypeAliasType(
 """Everything a resolved path may yield: scalars, lists, or nested maps."""
 
 
-class ProjectedValue(BaseModel):
-    """One projected output field, with optional confidence/provenance metadata."""
+ProjectedView: TypeAlias = dict[str, ResolvedValue]
+"""The projected output: bare field values keyed by their output path."""
 
-    value: ResolvedValue = None
+
+class ProjectedMeta(BaseModel):
+    """Optional per-field metadata, emitted only when a toggle requests it."""
+
     confidence: float | None = None
     provenance: list[Provenance] | None = None
 
 
-ProjectedView: TypeAlias = dict[str, ProjectedValue]
+class Projection(BaseModel):
+    """A projected view plus the optional metadata sidecar for its fields."""
+
+    values: ProjectedView = Field(default_factory=dict)
+    meta: dict[str, ProjectedMeta] = Field(default_factory=dict)
 
 
 ViolationReason = Literal[
@@ -222,28 +235,41 @@ def _apply_normalize(value: ResolvedValue, token: str) -> ResolvedValue:
 # --------------------------------------------------------------------------- #
 
 
-def _make_projected(
-    value: ResolvedValue,
-    profile: CanonicalProfile,
-    config: Config,
-    from_path: str,
-) -> ProjectedValue:
-    """Wrap a resolved value, attaching toggled confidence/provenance."""
+def _field_meta(
+    profile: CanonicalProfile, config: Config, from_path: str
+) -> ProjectedMeta | None:
+    """Build the optional confidence/provenance sidecar for one field, if toggled."""
+    if not (config.include_confidence or config.include_provenance):
+        return None
     confidence = profile.overall_confidence if config.include_confidence else None
     provenance: list[Provenance] | None = None
     if config.include_provenance:
         root = _root_field(from_path)
         provenance = [p for p in profile.provenance if p.field == root]
-    return ProjectedValue(value=value, confidence=confidence, provenance=provenance)
+    return ProjectedMeta(confidence=confidence, provenance=provenance)
 
 
-def _default_projection(tree: ResolvedValue) -> ProjectedView:
-    """Project every canonical top-level field as-is (no remap, no toggles)."""
-    view: ProjectedView = {}
+def _place(
+    spec: FieldSpec,
+    value: ResolvedValue,
+    profile: CanonicalProfile,
+    config: Config,
+    projection: Projection,
+    from_path: str,
+) -> None:
+    """Set a bare value and, when toggled, its metadata sidecar."""
+    projection.values[spec.path] = value
+    meta = _field_meta(profile, config, from_path)
+    if meta is not None:
+        projection.meta[spec.path] = meta
+
+
+def _default_projection(tree: ResolvedValue) -> Projection:
+    """Project the plain canonical schema as-is (bare values, no remap, no toggles)."""
+    projection = Projection()
     if isinstance(tree, dict):
-        for key, value in tree.items():
-            view[key] = ProjectedValue(value=value)
-    return view
+        projection.values.update(tree)
+    return projection
 
 
 def _project_field(
@@ -251,7 +277,7 @@ def _project_field(
     tree: ResolvedValue,
     profile: CanonicalProfile,
     config: Config,
-    view: ProjectedView,
+    projection: Projection,
     report: ProjectionReport,
 ) -> None:
     """Resolve, normalize, and place one requested field, recording violations."""
@@ -272,7 +298,7 @@ def _project_field(
                 Violation(path=spec.path, reason="missing", detail=from_path)
             )
             return
-        view[spec.path] = _make_projected(None, profile, config, from_path)
+        _place(spec, None, profile, config, projection, from_path)
         return
 
     if spec.normalize is not None:
@@ -291,17 +317,18 @@ def _project_field(
         else:
             value = normalized
 
-    view[spec.path] = _make_projected(value, profile, config, from_path)
+    _place(spec, value, profile, config, projection, from_path)
 
 
 def project(
     profile: CanonicalProfile, config: Config
-) -> tuple[ProjectedView, ProjectionReport]:
+) -> tuple[Projection, ProjectionReport]:
     """Project ``profile`` according to ``config``; pure and deterministic.
 
-    With no configured fields, the full default canonical projection is returned.
+    With no configured fields, the plain canonical schema is returned as bare values.
     Otherwise each :class:`~app.domain.models.FieldSpec` is resolved, optionally
-    normalized, and emitted per the ``on_missing`` policy.
+    normalized, and emitted per the ``on_missing`` policy. Field values are always
+    bare; confidence/provenance live in :attr:`Projection.meta` when toggled on.
     """
     tree = _to_resolved(profile.model_dump(mode="json"))
     report = ProjectionReport()
@@ -309,7 +336,7 @@ def project(
     if not config.fields:
         return _default_projection(tree), report
 
-    view: ProjectedView = {}
+    projection = Projection()
     for spec in config.fields:
-        _project_field(spec, tree, profile, config, view, report)
-    return view, report
+        _project_field(spec, tree, profile, config, projection, report)
+    return projection, report
