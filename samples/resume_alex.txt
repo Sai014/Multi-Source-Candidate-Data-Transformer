@@ -1,0 +1,18 @@
+Alex Rivera
+San Francisco, CA | arivera.dev@email.com | 415.555.0199
+LinkedIn: linkedin.com/in/arivera-dev | GitHub: github.com/arivera-code
+
+EXPERIENCE
+Backend Engineer, CloudSync Technologies — Mar 2023 to Present
+- Developed REST APIs using Python and Django.
+
+Junior Developer, DataFlow Inc — Jul 2021 to Feb 2023
+- Maintained internal tooling and wrote SQL scripts.
+
+EDUCATION
+San Jose State University
+Bachelor of Science in Software Engineering, Graduated: May 2021
+
+SKILLS
+Languages & Frameworks: Python 3, Django, SQL, JavaScript
+Tools: Git, Docker, AWS, REST APIs

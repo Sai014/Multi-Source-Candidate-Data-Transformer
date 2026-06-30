@@ -777,10 +777,10 @@ def _filter_redundant_ner_claims(claims: Sequence[Claim]) -> list[Claim]:
             ):
                 continue
         if claim.field == "education" and isinstance(claim.value, EducationEntry):
-            entry = claim.value
-            if entry.institution is None and entry.degree is not None:
+            edu_entry = claim.value
+            if edu_entry.institution is None and edu_entry.degree is not None:
                 if any(
-                    _is_ner_education_redundant(entry, structured)
+                    _is_ner_education_redundant(edu_entry, structured)
                     for structured in structured_education
                 ):
                     continue
