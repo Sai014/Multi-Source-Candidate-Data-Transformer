@@ -5,5 +5,5 @@ python-multipart
 phonenumbers
 pdfplumber
 python-docx
-spacy
+gliner
 typing-extensions>=4.6

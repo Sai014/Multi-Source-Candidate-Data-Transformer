@@ -11,13 +11,16 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from app.domain.enums import SourceType
 from app.domain.models import Claim
-from app.pipeline.ledger import ClaimLedger
 from app.sources.base import ADAPTER_REGISTRY, SourceAdapter
+
+if TYPE_CHECKING:
+    from app.pipeline.ledger import ClaimLedger
 
 
 class QuarantineRecord(BaseModel):
@@ -80,6 +83,8 @@ def ingest_paths(
     Adapters default to the global registry but may be passed explicitly (keeping
     the function deterministic and easy to test).
     """
+    from app.pipeline.ledger import ClaimLedger
+
     active = ADAPTER_REGISTRY if adapters is None else adapters
     ledger = ClaimLedger()
     quarantined: list[QuarantineRecord] = []

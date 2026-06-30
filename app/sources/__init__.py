@@ -11,6 +11,7 @@ from app.sources.detect import (
 )
 from app.sources.github import GitHubAdapter, GitHubFetcher, handle_to_stem
 from app.sources.resume import (
+    GlinerExtractor,
     ProseExtractor,
     ResumeAdapter,
     ResumeExtractor,
@@ -22,6 +23,7 @@ __all__ = [
     "AtsAdapter",
     "GitHubAdapter",
     "GitHubFetcher",
+    "GlinerExtractor",
     "IngestResult",
     "ProseExtractor",
     "QuarantineRecord",

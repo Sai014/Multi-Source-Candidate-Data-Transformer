@@ -6,62 +6,139 @@
   <title>Candidate Data Transformer</title>
   <style>
     :root {
-      --fg: #1c1e21;
+      --fg: #111827;
       --muted: #6b7280;
-      --line: #e3e6ea;
-      --bg: #f6f7f9;
+      --line: #e5e7eb;
+      --bg: #f3f4f6;
       --card: #ffffff;
       --accent: #2563eb;
-      --warn-bg: #fff4e5;
-      --warn-line: #f0a14a;
-      --null-bg: #fde2e2;
+      --accent-soft: #eff6ff;
+      --warn-bg: #fffbeb;
+      --warn-line: #f59e0b;
+      --null-bg: #fee2e2;
       --mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --header-h: 64px;
+      --sticky-z: 10;
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--fg);
       background: var(--bg);
       line-height: 1.45;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     header {
-      padding: 20px 24px;
+      flex-shrink: 0;
+      padding: 14px 24px;
       background: var(--card);
       border-bottom: 1px solid var(--line);
+      z-index: 20;
     }
-    header h1 { margin: 0; font-size: 1.25rem; }
-    header p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
-    main { max-width: 1240px; margin: 0 auto; padding: 24px; }
-    .layout { display: flex; gap: 18px; align-items: flex-start; }
-    .left { flex: 0 0 380px; position: sticky; top: 24px; }
-    .right { flex: 1 1 auto; min-width: 0; }
+    header h1 { margin: 0; font-size: 1.1rem; font-weight: 650; letter-spacing: -0.01em; }
+    header p { margin: 2px 0 0; color: var(--muted); font-size: 0.84rem; }
+    main { flex: 1; min-height: 0; display: flex; }
+    .layout { display: flex; width: 100%; min-height: 0; }
+    .left {
+      flex: 0 0 360px;
+      overflow-y: auto;
+      padding: 20px;
+      border-right: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .right {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-y: auto;
+      padding: 20px 24px;
+      background: var(--bg);
+    }
     @media (max-width: 900px) {
+      body { overflow: auto; height: auto; min-height: 100%; }
+      main { flex: none; min-height: auto; }
       .layout { flex-direction: column; }
-      .left { position: static; flex-basis: auto; width: 100%; }
+      .left {
+        flex: none;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        max-height: 45vh;
+      }
+      .right { flex: none; overflow: visible; }
     }
-    .switch { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
-    .switch input { width: 16px; height: 16px; cursor: pointer; }
-    .tabs { display: flex; gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); }
+    .switch { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
+    .switch input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+    .tabs {
+      display: flex; gap: 2px; padding: 0 16px;
+      border-bottom: 1px solid var(--line); background: var(--card);
+    }
     .tab {
-      border: 1px solid transparent; border-bottom: none; background: none;
-      border-radius: 8px 8px 0 0; padding: 8px 14px; font-size: 0.92rem;
-      color: var(--muted); cursor: pointer;
+      border: none; border-bottom: 2px solid transparent; background: none;
+      padding: 12px 14px; font-size: 0.88rem;
+      color: var(--muted); cursor: pointer; margin-bottom: -1px;
     }
     .tab:hover { color: var(--fg); }
-    .tab.active { background: var(--bg); border-color: var(--line); color: var(--accent); font-weight: 600; }
-    .tab-body { padding: 16px 18px 18px; }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .candidate-tabs {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 12px 16px 10px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .candidate-tab {
+      font: inherit; font-size: 0.82rem; padding: 5px 12px;
+      border: 1px solid var(--line); border-radius: 999px;
+      background: var(--bg); color: var(--muted); cursor: pointer;
+      max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .candidate-tab:hover { border-color: #c7ccd3; color: var(--fg); }
+    .candidate-tab.active {
+      background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+    }
+    .results-sticky {
+      position: sticky; top: 0; z-index: var(--sticky-z);
+      background: var(--card);
+      box-shadow: 0 1px 0 var(--line);
+    }
+    .panel-toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; padding: 10px 16px 12px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-toolbar .hint { margin: 0; flex: 1 1 200px; min-width: 0; }
+    .tab-body { padding: 14px 16px 16px; }
+    .tab-body .view-table,
+    .tab-body pre.view-json { margin-top: 0; }
     .tab-panel.hidden { display: none; }
     .card {
       background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 18px;
-      margin-bottom: 18px;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
-    h2 { font-size: 1rem; margin: 0 0 12px; }
-    label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 6px; }
-    .hint { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
+    .card:last-child { margin-bottom: 0; }
+    .results-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    h2 { font-size: 0.92rem; margin: 0 0 12px; font-weight: 650; color: var(--fg); }
+    label { font-weight: 600; font-size: 0.88rem; display: block; margin-bottom: 6px; }
+    .hint { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; line-height: 1.4; }
+    .text-input {
+      width: 100%; font-size: 0.88rem;
+      border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+      background: var(--card);
+    }
+    .text-input:focus { outline: 2px solid #bfdbfe; border-color: var(--accent); }
     textarea {
       width: 100%;
       min-height: 220px;
@@ -91,13 +168,36 @@
     }
     button.primary:disabled { opacity: 0.6; cursor: progress; }
     .banner {
-      font-size: 1rem;
+      font-size: 0.88rem;
       font-weight: 600;
-      padding: 12px 14px;
-      border-radius: 8px;
-      background: #eef2ff;
-      border: 1px solid #c7d2fe;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      margin-bottom: 14px;
     }
+    .right-placeholder {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 280px; color: var(--muted); font-size: 0.92rem;
+      border: 1px dashed var(--line); border-radius: 12px; background: var(--card);
+    }
+    .right-loader {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; min-height: 320px;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+      color: var(--muted); font-size: 0.92rem;
+    }
+    .loader-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--line);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    .loader-title { color: var(--fg); font-weight: 600; font-size: 0.95rem; margin: 0; }
+    .loader-sub { margin: 0; font-size: 0.84rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .quarantine {
       background: var(--warn-bg);
       border: 1px solid var(--warn-line);
@@ -146,10 +246,10 @@
     .file-list .empty { color: var(--muted); font-size: 0.88rem; }
 
     /* Result view toggle (Table / JSON) */
-    .view-switch { display: flex; gap: 4px; margin-bottom: 12px; }
+    .view-switch { display: flex; gap: 4px; flex-shrink: 0; }
     .view-btn {
-      font-size: 0.82rem; padding: 5px 12px; border-radius: 6px;
-      color: var(--muted); border: 1px solid var(--line); background: var(--card);
+      font-size: 0.8rem; padding: 5px 11px; border-radius: 6px;
+      color: var(--muted); border: 1px solid var(--line); background: var(--bg);
     }
     .view-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 
@@ -236,8 +336,7 @@
           <label for="files">Source files (JSON, TXT, PDF, DOCX)</label>
           <input id="files" type="file" multiple accept=".json,.txt,.pdf,.docx,application/json,text/plain,application/pdf" />
           <p class="hint">
-            Add files one at a time &mdash; each pick is appended to the list, so you can
-            mix a JSON and a PDF.
+            Add Resumes or ATS JSON files of condidates.
           </p>
           <div id="file-list" class="file-list"></div>
           <div class="row">
@@ -245,13 +344,9 @@
           </div>
 
           <label for="github" style="margin-top: 16px;">GitHub profile URLs</label>
-          <input id="github" type="text" placeholder="e.g. https://github.com/octocat"
-                 style="width: 100%; font-size: 0.9rem; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;" />
+          <input id="github" class="text-input" type="text" placeholder="e.g. https://github.com/octocat" />
           <p class="hint">
-            Optional &mdash; comma/space separated GitHub profile URLs (a bare
-            username also works). Each is resolved to a username, fetched live from
-            <code>api.github.com/users/&lt;username&gt;</code>, and merged through the
-            same pipeline.
+            Optional &mdash; Add Github URL of candidates, seperated by commas or spaces.
           </p>
         </div>
 
@@ -273,9 +368,9 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="row">
-            <button id="btn-run" class="primary" type="button">Transform</button>
+        <div class="card" style="padding: 14px 16px;">
+          <div class="row" style="margin-top: 0;">
+            <button id="btn-run" class="primary" type="button" style="flex: 1;">Transform</button>
             <span id="status" class="ok-note"></span>
           </div>
         </div>
@@ -284,35 +379,53 @@
       <section class="right">
         <div id="error" class="error hidden"></div>
 
-        <div id="results" class="hidden">
-          <div id="banner" class="banner" style="margin-bottom: 14px;"></div>
+        <div id="placeholder" class="right-placeholder">
+          Upload sources and click Transform to see results here.
+        </div>
 
-          <div class="card" style="padding: 0;">
-            <div class="tabs" role="tablist">
-              <button class="tab active" data-target="panel-canonical" role="tab" type="button">Canonical profile</button>
-              <button class="tab" data-target="panel-projected" role="tab" type="button">Projected output</button>
-            </div>
-            <div class="tab-body">
-              <div id="panel-canonical" class="tab-panel">
+        <div id="loader" class="right-loader hidden" role="status" aria-live="polite" aria-busy="true">
+          <div class="loader-spinner" aria-hidden="true"></div>
+          <p class="loader-title">Transforming sources&hellip;</p>
+          <p class="loader-sub">Parsing, merging, and scoring candidate profiles.</p>
+        </div>
+
+        <div id="results" class="hidden">
+          <div id="banner" class="banner"></div>
+
+          <div class="results-card">
+            <div id="results-sticky" class="results-sticky">
+              <div id="candidate-tabs" class="candidate-tabs hidden" role="tablist" aria-label="Candidates"></div>
+              <div class="tabs" role="tablist">
+                <button class="tab active" data-target="panel-canonical" role="tab" type="button">Canonical profile</button>
+                <button class="tab" data-target="panel-projected" role="tab" type="button">Projected output</button>
+              </div>
+              <div id="toolbar-canonical" class="panel-toolbar">
                 <div class="view-switch" data-scope="canonical">
                   <button class="view-btn active" type="button" data-view="table">Table</button>
                   <button class="view-btn" type="button" data-view="json">JSON</button>
                 </div>
-                <p class="hint"><code>null</code> / withheld fields are highlighted &mdash; the pipeline is honestly empty rather than wrong.</p>
-                <div id="profile-table" class="view-table"></div>
-                <pre id="profile" class="view-json hidden"></pre>
+                <p class="hint"><code>null</code> / withheld fields are highlighted.</p>
               </div>
-              <div id="panel-projected" class="tab-panel hidden">
+              <div id="toolbar-projected" class="panel-toolbar hidden">
                 <div class="view-switch" data-scope="projected">
                   <button class="view-btn active" type="button" data-view="table">Table</button>
                   <button class="view-btn" type="button" data-view="json">JSON</button>
                 </div>
-                <p class="hint">Bare values matching the requested schema. With no config this is the plain canonical schema. Per-field <code>confidence</code> / <code>provenance</code> appear as columns only when those toggles are on.</p>
+                <p class="hint">Bare schema values. Confidence / provenance columns appear when toggled in config.</p>
+              </div>
+            </div>
+
+            <div class="tab-body">
+              <div id="panel-canonical" class="tab-panel">
+                <div id="profile-table" class="view-table"></div>
+                <pre id="profile" class="view-json hidden"></pre>
+              </div>
+              <div id="panel-projected" class="tab-panel hidden">
                 <div id="projected-table" class="view-table"></div>
                 <div id="projected-json" class="view-json hidden">
                   <pre id="projected"></pre>
                   <div id="projected-meta-card" class="hidden" style="margin-top: 14px;">
-                    <p class="hint">Per-field <code>confidence</code> / <code>provenance</code>, shown only when those toggles are on.</p>
+                    <p class="hint">Per-field <code>confidence</code> / <code>provenance</code>.</p>
                     <pre id="projected-meta"></pre>
                   </div>
                 </div>
@@ -352,6 +465,9 @@
     };
 
     const $ = (id) => document.getElementById(id);
+
+    let lastResult = null;
+    let activeCandidate = 0;
 
     // Native file inputs replace their selection on every pick, so we accumulate
     // chosen files here to allow adding sources one at a time (e.g. a JSON, then a PDF).
@@ -526,30 +642,88 @@
       return `<table class="kv-table"><thead>${head}</thead><tbody>${rows.join("")}</tbody></table>`;
     }
 
-    function renderProfileTable(profiles) {
+    function renderProfileTable(profile) {
       const el = $("profile-table");
-      if (!profiles.length) {
-        el.innerHTML = '<p class="ok-note">No profiles produced.</p>';
+      if (!profile) {
+        el.innerHTML = '<p class="ok-note">No profile for this candidate.</p>';
         return;
       }
-      el.innerHTML = profiles.map((p, i) => {
-        const cap = profiles.length > 1
-          ? `<h3 class="tbl-cap">Candidate ${i + 1}${p.full_name ? ` <span class="muted">&middot; ${escapeHtml(p.full_name)}</span>` : ""}</h3>`
-          : "";
-        return `<div class="tbl-block">${cap}${kvTableHtml(Object.entries(p), null)}</div>`;
-      }).join("");
+      el.innerHTML = kvTableHtml(Object.entries(profile), null);
     }
 
-    function renderProjectedTable(projected, metaList) {
+    function renderProjectedTable(view, meta) {
       const el = $("projected-table");
-      if (!projected.length) {
-        el.innerHTML = '<p class="ok-note">No projected output.</p>';
+      if (!view) {
+        el.innerHTML = '<p class="ok-note">No projected output for this candidate.</p>';
         return;
       }
-      el.innerHTML = projected.map((view, i) => {
-        const cap = projected.length > 1 ? `<h3 class="tbl-cap">Candidate ${i + 1}</h3>` : "";
-        return `<div class="tbl-block">${cap}${kvTableHtml(Object.entries(view), (metaList || [])[i] || null)}</div>`;
+      el.innerHTML = kvTableHtml(Object.entries(view), meta || null);
+    }
+
+    function candidateLabel(profile, index) {
+      if (profile && profile.full_name) return profile.full_name;
+      if (profile && profile.candidate_id) return String(profile.candidate_id);
+      return `Candidate ${index + 1}`;
+    }
+
+    function renderCandidateTabs(profiles) {
+      const el = $("candidate-tabs");
+      if (!profiles || profiles.length <= 1) {
+        el.classList.add("hidden");
+        el.innerHTML = "";
+        return;
+      }
+      el.classList.remove("hidden");
+      el.innerHTML = profiles.map((p, i) => {
+        const label = candidateLabel(p, i);
+        const active = i === activeCandidate ? " active" : "";
+        return `<button class="candidate-tab${active}" data-index="${i}" type="button" title="${escapeHtml(label)}">${escapeHtml(label)}</button>`;
       }).join("");
+      el.querySelectorAll(".candidate-tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          activeCandidate = Number(btn.dataset.index);
+          renderCandidateTabs(profiles);
+          renderActiveCandidate();
+          scrollRightToResults();
+        });
+      });
+    }
+
+    function scrollRightToResults() {
+      const right = document.querySelector(".right");
+      const sticky = $("results-sticky");
+      if (right && sticky) {
+        const top = sticky.getBoundingClientRect().top - right.getBoundingClientRect().top + right.scrollTop;
+        right.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
+      }
+    }
+
+    function renderActiveCandidate() {
+      if (!lastResult) return;
+      const profiles = lastResult.profiles || [];
+      const projected = lastResult.projected || [];
+      const meta = lastResult.projected_meta || [];
+      if (!profiles.length) {
+        activeCandidate = 0;
+      } else if (activeCandidate >= profiles.length) {
+        activeCandidate = 0;
+      }
+      const idx = profiles.length ? activeCandidate : 0;
+
+      renderProfileTable(profiles[idx]);
+      renderProjectedTable(projected[idx], (meta || [])[idx]);
+
+      $("profile").innerHTML = highlightJson(profiles[idx] || null);
+      $("projected").innerHTML = highlightJson(projected[idx] || null);
+
+      const candidateMeta = (meta || [])[idx];
+      const hasMeta = candidateMeta && Object.keys(candidateMeta).length > 0;
+      $("projected-meta-card").classList.toggle("hidden", !hasMeta);
+      if (hasMeta) {
+        $("projected-meta").innerHTML = highlightJson(candidateMeta);
+      }
+
+      renderViolations(lastResult.reports || [], idx);
     }
 
     function baseName(path) {
@@ -565,6 +739,26 @@
 
     function clearError() {
       $("error").classList.add("hidden");
+    }
+
+    function showRightEmpty() {
+      $("placeholder").classList.remove("hidden");
+      $("loader").classList.add("hidden");
+      $("results").classList.add("hidden");
+    }
+
+    function showRightLoading() {
+      $("placeholder").classList.add("hidden");
+      $("loader").classList.remove("hidden");
+      $("results").classList.add("hidden");
+      $("error").classList.add("hidden");
+      document.querySelector(".right")?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showRightResults() {
+      $("placeholder").classList.add("hidden");
+      $("loader").classList.add("hidden");
+      $("results").classList.remove("hidden");
     }
 
     function renderBanner(summary) {
@@ -587,16 +781,15 @@
       el.innerHTML = `<div class="quarantine"><strong>${quarantined.length} source(s) could not be ingested:</strong><ul>${items}</ul></div>`;
     }
 
-    function renderViolations(reports) {
+    function renderViolations(reports, candidateIndex) {
       const el = $("violations");
       const all = [];
-      (reports || []).forEach((report, idx) => {
-        (report.violations || []).forEach((v) => {
-          all.push({ ...v, candidate: idx });
-        });
+      const report = (reports || [])[candidateIndex];
+      (report && report.violations ? report.violations : []).forEach((v) => {
+        all.push(v);
       });
       if (!all.length) {
-        el.innerHTML = '<p class="ok-note">No validation violations.</p>';
+        el.innerHTML = '<p class="ok-note">No validation violations for this candidate.</p>';
         return;
       }
       const items = all.map((v) => {
@@ -607,24 +800,15 @@
     }
 
     function render(data) {
+      lastResult = data;
+      activeCandidate = 0;
+
       renderBanner(data.summary);
       renderQuarantine(data.quarantined || []);
-      const profiles = data.profiles || [];
-      const projected = data.projected || [];
-      const meta = data.projected_meta || [];
-
-      renderProfileTable(profiles);
-      renderProjectedTable(projected, meta);
-
-      $("profile").innerHTML = highlightJson(profiles);
-      $("projected").innerHTML = highlightJson(projected);
-      const hasMeta = meta.some((m) => m && Object.keys(m).length > 0);
-      $("projected-meta-card").classList.toggle("hidden", !hasMeta);
-      if (hasMeta) {
-        $("projected-meta").innerHTML = highlightJson(meta);
-      }
-      renderViolations(data.reports || []);
-      $("results").classList.remove("hidden");
+      renderCandidateTabs(data.profiles || []);
+      renderActiveCandidate();
+      showRightResults();
+      scrollRightToResults();
     }
 
     async function onTransform() {
@@ -636,8 +820,10 @@
       }
       const btn = $("btn-run");
       const status = $("status");
+      const hadResults = Boolean(lastResult);
       btn.disabled = true;
       status.textContent = "Transforming\u2026";
+      showRightLoading();
 
       try {
         const form = new FormData();
@@ -661,11 +847,21 @@
               : JSON.stringify(payload.detail, null, 2);
           } catch (_) { /* keep statusText */ }
           showError(`Request failed (${res.status}):\n${detail}`);
+          if (hadResults) {
+            showRightResults();
+          } else {
+            showRightEmpty();
+          }
           return;
         }
         render(await res.json());
       } catch (err) {
         showError("Network error: could not reach the server. Is it running?");
+        if (hadResults) {
+          showRightResults();
+        } else {
+          showRightEmpty();
+        }
       } finally {
         btn.disabled = false;
         status.textContent = "";
@@ -691,7 +887,8 @@
 
     // View switch: toggle Table vs JSON within a panel.
     document.querySelectorAll(".view-switch").forEach((group) => {
-      const panel = group.closest(".tab-panel");
+      const scope = group.dataset.scope;
+      const panel = $(`panel-${scope}`);
       group.querySelectorAll(".view-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           group.querySelectorAll(".view-btn").forEach((b) => b.classList.remove("active"));
@@ -710,6 +907,9 @@
         document.querySelectorAll(".tab-panel").forEach((p) => p.classList.add("hidden"));
         tab.classList.add("active");
         $(tab.dataset.target).classList.remove("hidden");
+        const isCanonical = tab.dataset.target === "panel-canonical";
+        $("toolbar-canonical").classList.toggle("hidden", !isCanonical);
+        $("toolbar-projected").classList.toggle("hidden", isCanonical);
       });
     });
 

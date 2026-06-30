@@ -16,7 +16,7 @@ dependencies = [
     "phonenumbers",
     "pdfplumber",
     "python-docx",
-    "spacy",
+    "gliner",
     "python-multipart",
     "typing-extensions>=4.6",
 ]
@@ -48,7 +48,7 @@ init_typed = true
 warn_required_dynamic_aliases = true
 
 [[tool.mypy.overrides]]
-module = ["pdfplumber.*", "docx.*", "spacy.*"]
+module = ["pdfplumber.*", "docx.*", "gliner.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
@@ -74,3 +74,6 @@ extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Query", "fast
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "no_gliner_mock: disable autouse GLiNER mock for tests that exercise chunked prediction",
+]
