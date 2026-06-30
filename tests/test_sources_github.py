@@ -12,7 +12,7 @@ from pathlib import Path
 from app.domain.enums import ExtractionMethod, SourceType
 from app.domain.models import Claim, ExperienceEntry, Links, Location
 from app.sources.detect import ingest_paths
-from app.sources.github import GitHubAdapter, _resolve_username
+from app.sources.github import GitHubAdapter, _resolve_username, handle_to_stem
 
 SAMPLES = Path(__file__).resolve().parents[1] / "samples"
 
@@ -47,18 +47,27 @@ def _write(tmp_path: Path, content: str) -> Path:
     return path
 
 
-def test_resolve_username_accepts_handle_url_and_at() -> None:
-    """A bare name, an @handle, and a profile URL all resolve to the username."""
-    assert _resolve_username("octocat") == "octocat"
-    assert _resolve_username("@octocat") == "octocat"
+def test_resolve_username_accepts_url_handle_and_at() -> None:
+    """A profile URL, a bare name, and an @handle all resolve to the username."""
     assert _resolve_username("https://github.com/octocat") == "octocat"
     assert _resolve_username("github.com/octocat/") == "octocat"
+    assert _resolve_username("https://www.github.com/octocat?tab=repositories") == "octocat"
+    assert _resolve_username("octocat") == "octocat"
+    assert _resolve_username("@octocat") == "octocat"
 
 
-def test_profile_maps_to_typed_claims(tmp_path: Path) -> None:
-    """A full profile maps to typed GITHUB direct-map claims."""
+def test_handle_to_stem_is_filesystem_safe() -> None:
+    """A profile URL slugifies to a safe stem with no path separators."""
+    stem = handle_to_stem("https://github.com/octocat")
+    assert "/" not in stem and ":" not in stem
+    assert stem == "https_github_com_octocat"
+    assert handle_to_stem("   ", fallback="github_0") == "github_0"
+
+
+def test_profile_url_maps_to_typed_claims(tmp_path: Path) -> None:
+    """A profile URL source resolves and maps to typed GITHUB direct-map claims."""
     adapter = GitHubAdapter(fetcher=_fetcher(OCTOCAT))
-    claims = adapter.extract(_write(tmp_path, "octocat"))
+    claims = adapter.extract(_write(tmp_path, "https://github.com/octocat"))
 
     assert all(c.source is SourceType.GITHUB for c in claims)
     assert all(c.method is ExtractionMethod.DIRECT_MAP for c in claims)

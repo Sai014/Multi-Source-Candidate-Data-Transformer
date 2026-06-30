@@ -20,6 +20,7 @@ from pathlib import Path
 from app.api.schemas import TransformResponse, build_transform_response
 from app.domain.models import Config
 from app.pipeline.orchestrate import run
+from app.sources.github import handle_to_stem
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -39,8 +40,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--github",
         nargs="*",
         default=[],
-        metavar="USERNAME",
-        help="Zero or more GitHub usernames (or profile URLs) to fetch via the API.",
+        metavar="URL",
+        help="Zero or more GitHub profile URLs (a bare username also works) to fetch.",
     )
     parser.add_argument(
         "--config",
@@ -70,12 +71,12 @@ def load_config(value: str | None) -> Config:
     return Config.model_validate(parsed)
 
 
-def _stage_github(usernames: list[str], tmp_dir: Path) -> list[Path]:
-    """Write each GitHub username to a ``.github`` file the adapter can route."""
+def _stage_github(handles: list[str], tmp_dir: Path) -> list[Path]:
+    """Write each GitHub URL/handle to a ``.github`` file the adapter can route."""
     paths: list[Path] = []
-    for index, username in enumerate(usernames):
-        path = tmp_dir / f"gh_{index}_{username.lstrip('@') or 'user'}.github"
-        path.write_text(username, encoding="utf-8")
+    for index, handle in enumerate(handles):
+        path = tmp_dir / f"gh_{index}_{handle_to_stem(handle, f'github_{index}')}.github"
+        path.write_text(handle, encoding="utf-8")
         paths.append(path)
     return paths
 
@@ -85,14 +86,14 @@ def transform_inputs(
     config_arg: str | None,
     github: list[str] | None = None,
 ) -> TransformResponse:
-    """Run the pipeline over input paths (and GitHub usernames) and build a response."""
+    """Run the pipeline over input paths (and GitHub profile URLs) and build a response."""
     config = load_config(config_arg)
     paths = [Path(item) for item in inputs]
-    usernames = github or []
-    if not usernames:
+    handles = github or []
+    if not handles:
         return build_transform_response(run(paths, config))
     with tempfile.TemporaryDirectory() as tmp_name:
-        paths.extend(_stage_github(usernames, Path(tmp_name)))
+        paths.extend(_stage_github(handles, Path(tmp_name)))
         return build_transform_response(run(paths, config))
 
 
@@ -106,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
     out_arg: str | None = args.out
 
     if not inputs and not github:
-        parser.error("provide at least one --inputs PATH or --github USERNAME")
+        parser.error("provide at least one --inputs PATH or --github URL")
 
     response = transform_inputs(inputs, config_arg, github)
     output = response.model_dump_json(indent=2)

@@ -62,15 +62,17 @@ uvicorn app.api.main:app --reload
 | ---------- | ----------------------------- | ---------------------------------------------------------- |
 | ATS        | `.json`                       | Vendor-agnostic field aliasing.                            |
 | Resume     | `.txt`, `.pdf`, `.docx`       | Section + prose extraction strategies.                     |
-| **GitHub** | `.github` file (or UI/CLI/API)| Content is a username/`@handle`/profile URL; fetched live. |
+| **GitHub** | `.github` file (or UI/CLI/API)| Content is a profile URL (or bare username); fetched live. |
 
-The GitHub source calls `GET https://api.github.com/users/{username}` and maps the
-public profile (name, email, bio, location, blog/Twitter/profile links, company)
-into the same canonical claims, so it resolves and fuses alongside every other
-source. A handle that 404s, rate-limits, or is malformed is quarantined like any
-other bad source - it never crashes the run. The username can be supplied three
-ways: a `.github` file in `--inputs`, the `--github` CLI flag, or the **GitHub
-usernames** field in the UI / `github` form field of the API.
+The GitHub source takes a **profile URL** (e.g. `https://github.com/octocat`; a
+bare `octocat`/`@octocat` handle also works), resolves it to a username, calls
+`GET https://api.github.com/users/{username}`, and maps the public profile (name,
+email, bio, location, blog/Twitter/profile links, company) into the same canonical
+claims, so it resolves and fuses alongside every other source. A URL that 404s,
+rate-limits, or is malformed is quarantined like any other bad source - it never
+crashes the run. The URL can be supplied three ways: a `.github` file in
+`--inputs`, the `--github` CLI flag, or the **GitHub profile URLs** field in the UI
+/ `github` form field of the API.
 
 ## Web UI
 
@@ -109,7 +111,7 @@ Runs the same pipeline and emits the identical response JSON as the API:
 
 ```bash
 python -m app.cli --inputs samples/ats_sample.json samples/resume_sample.txt \
-  --github octocat \
+  --github https://github.com/octocat \
   --config samples/config_custom.json --out result.json
 # provide --inputs and/or --github (at least one source); omit --config
 # (or pass "none") for the full canonical schema; omit --out for stdout

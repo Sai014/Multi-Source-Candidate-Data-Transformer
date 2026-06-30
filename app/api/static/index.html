@@ -244,13 +244,14 @@
             <button id="btn-clear-files" type="button">Clear files</button>
           </div>
 
-          <label for="github" style="margin-top: 16px;">GitHub usernames</label>
-          <input id="github" type="text" placeholder="e.g. octocat, torvalds"
+          <label for="github" style="margin-top: 16px;">GitHub profile URLs</label>
+          <input id="github" type="text" placeholder="e.g. https://github.com/octocat"
                  style="width: 100%; font-size: 0.9rem; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;" />
           <p class="hint">
-            Optional &mdash; comma/space separated handles or profile URLs. Each is
-            fetched live from <code>api.github.com/users/&lt;username&gt;</code> and
-            merged through the same pipeline.
+            Optional &mdash; comma/space separated GitHub profile URLs (a bare
+            username also works). Each is resolved to a username, fetched live from
+            <code>api.github.com/users/&lt;username&gt;</code>, and merged through the
+            same pipeline.
           </p>
         </div>
 
@@ -630,7 +631,7 @@
       clearError();
       const githubHandles = $("github").value.trim();
       if (!selectedFiles.length && !githubHandles) {
-        showError("Please select at least one source file or enter a GitHub username.");
+        showError("Please select at least one source file or enter a GitHub profile URL.");
         return;
       }
       const btn = $("btn-run");

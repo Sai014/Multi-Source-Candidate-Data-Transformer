@@ -22,6 +22,7 @@ from pydantic import BaseModel, ValidationError
 from app.api.schemas import TransformResponse, build_transform_response
 from app.domain.models import Config
 from app.pipeline.orchestrate import run
+from app.sources.github import handle_to_stem
 
 app = FastAPI(
     title="Multi-Source Candidate Data Transformer",
@@ -83,19 +84,20 @@ def _write_temp(upload: UploadFile, data: bytes, tmp_dir: Path, index: int) -> P
 
 
 def _split_handles(raw: str | None) -> list[str]:
-    """Split a free-form handles field (comma/space/newline separated) into tokens."""
+    """Split a free-form GitHub field (comma/space/newline separated) into tokens."""
     if raw is None:
         return []
     return [token for token in re.split(r"[\s,]+", raw.strip()) if token]
 
 
 def _stage_github(handles: list[str], tmp_dir: Path, start_index: int) -> list[Path]:
-    """Write each GitHub handle to its own ``.github`` source file for routing."""
+    """Write each GitHub URL/handle to its own ``.github`` source file for routing."""
     paths: list[Path] = []
     for offset, handle in enumerate(handles):
-        sub_dir = tmp_dir / f"gh_{start_index + offset}"
+        index = start_index + offset
+        sub_dir = tmp_dir / f"gh_{index}"
         sub_dir.mkdir(parents=True, exist_ok=True)
-        path = sub_dir / f"{handle.lstrip('@') or 'user'}.github"
+        path = sub_dir / f"{handle_to_stem(handle, f'github_{index}')}.github"
         path.write_text(handle, encoding="utf-8")
         paths.append(path)
     return paths
@@ -107,13 +109,14 @@ async def transform(
     github: str | None = Form(default=None),
     config: str | None = Form(default=None),
 ) -> TransformResponse:
-    """Transform uploaded sources and/or GitHub usernames into a canonical profile.
+    """Transform uploaded sources and/or GitHub profile URLs into a canonical profile.
 
-    ``github`` is an optional comma/space/newline separated list of usernames (or
-    profile URLs); each is fetched from the GitHub users API and fed through the
-    same pipeline. The route stages every source to a temp file, runs the pure
-    pipeline, and always cleans up. Garbage sources never fail the request; they
-    come back inside ``quarantined``.
+    ``github`` is an optional comma/space/newline separated list of GitHub profile
+    URLs (e.g. ``https://github.com/octocat``); a bare username is also accepted.
+    Each is resolved to a username and fetched from the GitHub users API, then fed
+    through the same pipeline. The route stages every source to a temp file, runs
+    the pure pipeline, and always cleans up. Garbage sources never fail the request;
+    they come back inside ``quarantined``.
     """
     parsed_config = _parse_config(config)
     handles = _split_handles(github)

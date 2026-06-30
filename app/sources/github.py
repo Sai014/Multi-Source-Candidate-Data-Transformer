@@ -17,6 +17,7 @@ run. Missing/blank profile fields simply produce no claim (honestly-empty).
 from __future__ import annotations
 
 import json
+import re
 import urllib.request
 from pathlib import Path
 from typing import ClassVar, Protocol
@@ -33,6 +34,7 @@ _TIMEOUT_SECONDS = 10.0
 # GitHub usernames: alphanumeric or single hyphens, 1-39 chars (validated loosely
 # here - the API is the real authority and rejects anything truly invalid).
 _USERNAME_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-")
+_SLUG_RE = re.compile(r"[^A-Za-z0-9_-]+")
 
 
 class GitHubFetcher(Protocol):
@@ -55,6 +57,17 @@ def _http_fetch(username: str) -> dict[str, object]:
     if not isinstance(parsed, dict):
         raise ValueError("GitHub API response was not a JSON object")
     return {str(key): value for key, value in parsed.items()}
+
+
+def handle_to_stem(handle: str, fallback: str = "github_user") -> str:
+    """A filesystem-safe filename stem for a staged ``.github`` source.
+
+    A GitHub source may be given as a full URL (``https://github.com/octocat``), so
+    its raw text cannot be used as a filename directly. This slugifies it (keeping
+    only ``[A-Za-z0-9_-]``) so callers can name the staged ``.github`` file safely.
+    """
+    slug = _SLUG_RE.sub("_", handle.strip()).strip("_")
+    return slug[:60] or fallback
 
 
 def _resolve_username(raw: str) -> str:
