@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import tempfile
 from pathlib import Path
 
 from app.api.schemas import TransformResponse, build_transform_response
@@ -29,10 +30,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--inputs",
-        nargs="+",
-        required=True,
+        nargs="*",
+        default=[],
         metavar="PATH",
-        help="One or more source files (ATS JSON, resume TXT/PDF/DOCX).",
+        help="Zero or more source files (ATS JSON, resume TXT/PDF/DOCX).",
+    )
+    parser.add_argument(
+        "--github",
+        nargs="*",
+        default=[],
+        metavar="USERNAME",
+        help="Zero or more GitHub usernames (or profile URLs) to fetch via the API.",
     )
     parser.add_argument(
         "--config",
@@ -62,11 +70,30 @@ def load_config(value: str | None) -> Config:
     return Config.model_validate(parsed)
 
 
-def transform_inputs(inputs: list[str], config_arg: str | None) -> TransformResponse:
-    """Run the pipeline over input paths and build the public response shape."""
+def _stage_github(usernames: list[str], tmp_dir: Path) -> list[Path]:
+    """Write each GitHub username to a ``.github`` file the adapter can route."""
+    paths: list[Path] = []
+    for index, username in enumerate(usernames):
+        path = tmp_dir / f"gh_{index}_{username.lstrip('@') or 'user'}.github"
+        path.write_text(username, encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
+def transform_inputs(
+    inputs: list[str],
+    config_arg: str | None,
+    github: list[str] | None = None,
+) -> TransformResponse:
+    """Run the pipeline over input paths (and GitHub usernames) and build a response."""
     config = load_config(config_arg)
     paths = [Path(item) for item in inputs]
-    return build_transform_response(run(paths, config))
+    usernames = github or []
+    if not usernames:
+        return build_transform_response(run(paths, config))
+    with tempfile.TemporaryDirectory() as tmp_name:
+        paths.extend(_stage_github(usernames, Path(tmp_name)))
+        return build_transform_response(run(paths, config))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,10 +101,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     inputs: list[str] = list(args.inputs)
+    github: list[str] = list(args.github)
     config_arg: str | None = args.config
     out_arg: str | None = args.out
 
-    response = transform_inputs(inputs, config_arg)
+    if not inputs and not github:
+        parser.error("provide at least one --inputs PATH or --github USERNAME")
+
+    response = transform_inputs(inputs, config_arg, github)
     output = response.model_dump_json(indent=2)
 
     if out_arg is not None:

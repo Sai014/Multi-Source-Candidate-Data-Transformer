@@ -15,6 +15,7 @@ class SourceType(StrEnum):
     ATS = "ats"
     RESUME = "resume"
     NOTES = "notes"
+    GITHUB = "github"
 
 
 class ExtractionMethod(StrEnum):

@@ -56,6 +56,22 @@ pytest
 uvicorn app.api.main:app --reload
 ```
 
+## Sources
+
+| Source     | Routed by                     | Notes                                                      |
+| ---------- | ----------------------------- | ---------------------------------------------------------- |
+| ATS        | `.json`                       | Vendor-agnostic field aliasing.                            |
+| Resume     | `.txt`, `.pdf`, `.docx`       | Section + prose extraction strategies.                     |
+| **GitHub** | `.github` file (or UI/CLI/API)| Content is a username/`@handle`/profile URL; fetched live. |
+
+The GitHub source calls `GET https://api.github.com/users/{username}` and maps the
+public profile (name, email, bio, location, blog/Twitter/profile links, company)
+into the same canonical claims, so it resolves and fuses alongside every other
+source. A handle that 404s, rate-limits, or is malformed is quarantined like any
+other bad source - it never crashes the run. The username can be supplied three
+ways: a `.github` file in `--inputs`, the `--github` CLI flag, or the **GitHub
+usernames** field in the UI / `github` form field of the API.
+
 ## Web UI
 
 Start the server and open the self-contained test UI (no build step, works offline):
@@ -75,11 +91,12 @@ summary banner, prominently highlighted quarantined sources, the canonical profi
 
 - `GET /health` &rarr; `{"status":"ok"}`
 - `GET /` &rarr; the test UI
-- `POST /transform` (multipart/form-data): `files` (one or more sources) and an
-  optional `config` JSON string field (empty &rarr; full default projection).
-  Returns profiles, the config projection, quarantined sources, validation reports,
-  and a summary. A bad **source** is returned quarantined (still HTTP 200); only an
-  invalid **config** is a 422.
+- `POST /transform` (multipart/form-data): `files` (zero or more uploaded sources),
+  an optional `github` field (comma/space/newline separated usernames or profile
+  URLs), and an optional `config` JSON string field (empty &rarr; full default
+  projection). Returns profiles, the config projection, quarantined sources,
+  validation reports, and a summary. A bad **source** is returned quarantined (still
+  HTTP 200); only an invalid **config** is a 422.
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -92,8 +109,10 @@ Runs the same pipeline and emits the identical response JSON as the API:
 
 ```bash
 python -m app.cli --inputs samples/ats_sample.json samples/resume_sample.txt \
+  --github octocat \
   --config samples/config_custom.json --out result.json
-# omit --config (or pass "none") for the full canonical schema; omit --out for stdout
+# provide --inputs and/or --github (at least one source); omit --config
+# (or pass "none") for the full canonical schema; omit --out for stdout
 ```
 
 ## Layout
@@ -106,6 +125,6 @@ app/
   pipeline/      # ledger, resolve, fuse, project, validate, orchestrate
   api/           # FastAPI app (/health, /transform) + static test UI
   cli.py         # CLI entrypoint (same output as the API)
-samples/         # ats_sample.json, resume_sample.txt, broken_source.json, config_custom.json
+samples/         # ats_sample.json, resume_sample.txt, github_octocat.github, broken_source.json, config_custom.json
 tests/           # pytest suite
 ```

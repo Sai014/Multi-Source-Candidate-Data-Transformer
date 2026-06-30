@@ -13,6 +13,7 @@ from app.domain.enums import ExtractionMethod, SourceType
 
 SOURCE_TRUST: dict[str, float] = {
     "ats": 0.90,
+    "github": 0.70,
     "resume_section": 0.75,
     "resume_prose": 0.55,
     "notes": 0.40,
@@ -25,9 +26,10 @@ METHOD_RELIABILITY: dict[str, float] = {
 }
 SOURCE_PRIORITY: dict[str, int] = {
     "ats": 0,
-    "resume_section": 1,
-    "resume_prose": 2,
-    "notes": 3,
+    "github": 1,
+    "resume_section": 2,
+    "resume_prose": 3,
+    "notes": 4,
 }
 
 TAU = 0.5
@@ -44,6 +46,8 @@ def trust_key(source: SourceType, method: ExtractionMethod) -> str:
     """
     if source is SourceType.ATS:
         return "ats"
+    if source is SourceType.GITHUB:
+        return "github"
     if source is SourceType.NOTES:
         return "notes"
     if method is ExtractionMethod.STRUCTURED_PARSE:

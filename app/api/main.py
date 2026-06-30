@@ -10,6 +10,7 @@ only an invalid *config* is the caller's fault (HTTP 422).
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 from pathlib import Path
 from typing import Literal
@@ -81,18 +82,41 @@ def _write_temp(upload: UploadFile, data: bytes, tmp_dir: Path, index: int) -> P
     return path
 
 
+def _split_handles(raw: str | None) -> list[str]:
+    """Split a free-form handles field (comma/space/newline separated) into tokens."""
+    if raw is None:
+        return []
+    return [token for token in re.split(r"[\s,]+", raw.strip()) if token]
+
+
+def _stage_github(handles: list[str], tmp_dir: Path, start_index: int) -> list[Path]:
+    """Write each GitHub handle to its own ``.github`` source file for routing."""
+    paths: list[Path] = []
+    for offset, handle in enumerate(handles):
+        sub_dir = tmp_dir / f"gh_{start_index + offset}"
+        sub_dir.mkdir(parents=True, exist_ok=True)
+        path = sub_dir / f"{handle.lstrip('@') or 'user'}.github"
+        path.write_text(handle, encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
 @app.post("/transform", response_model=TransformResponse)
 async def transform(
-    files: list[UploadFile] = File(...),
+    files: list[UploadFile] = File(default_factory=list),
+    github: str | None = Form(default=None),
     config: str | None = Form(default=None),
 ) -> TransformResponse:
-    """Transform one or more uploaded sources into a canonical profile + projection.
+    """Transform uploaded sources and/or GitHub usernames into a canonical profile.
 
-    The route stages uploads to temp files, runs the pure pipeline, and always
-    cleans the temp files up. Garbage sources never fail the request; they are
-    returned inside ``quarantined``.
+    ``github`` is an optional comma/space/newline separated list of usernames (or
+    profile URLs); each is fetched from the GitHub users API and fed through the
+    same pipeline. The route stages every source to a temp file, runs the pure
+    pipeline, and always cleans up. Garbage sources never fail the request; they
+    come back inside ``quarantined``.
     """
     parsed_config = _parse_config(config)
+    handles = _split_handles(github)
 
     with tempfile.TemporaryDirectory() as tmp_name:
         tmp_dir = Path(tmp_name)
@@ -100,6 +124,7 @@ async def transform(
         for index, upload in enumerate(files):
             data = await upload.read()
             paths.append(_write_temp(upload, data, tmp_dir, index))
+        paths.extend(_stage_github(handles, tmp_dir, len(paths)))
         result = run(paths, parsed_config)
 
     return build_transform_response(result)

@@ -144,6 +144,82 @@
       font-size: 1.1rem; line-height: 1; padding: 0 4px;
     }
     .file-list .empty { color: var(--muted); font-size: 0.88rem; }
+
+    /* Result view toggle (Table / JSON) */
+    .view-switch { display: flex; gap: 4px; margin-bottom: 12px; }
+    .view-btn {
+      font-size: 0.82rem; padding: 5px 12px; border-radius: 6px;
+      color: var(--muted); border: 1px solid var(--line); background: var(--card);
+    }
+    .view-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+    /* Field / subfield / value tables */
+    .tbl-block { margin-bottom: 18px; }
+    .tbl-block:last-child { margin-bottom: 0; }
+    .tbl-cap { font-size: 0.92rem; margin: 0 0 8px; }
+    .tbl-cap .muted { color: var(--muted); font-weight: 400; }
+    table.kv-table {
+      width: 100%; border-collapse: collapse; font-size: 0.86rem;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 8px; overflow: hidden;
+    }
+    table.kv-table > thead th {
+      text-align: left; background: var(--bg); color: var(--muted);
+      font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+    }
+    table.kv-table > tbody > tr > td {
+      padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    table.kv-table > tbody > tr:last-child > td { border-bottom: none; }
+    .field-cell {
+      font-weight: 600; background: #fafbfc; white-space: nowrap;
+      border-right: 1px solid var(--line);
+    }
+    .sub-cell {
+      color: var(--muted); white-space: nowrap; font-family: var(--mono);
+      font-size: 0.8rem; border-right: 1px solid var(--line);
+    }
+    .val-cell { width: 100%; }
+    .meta-cell { white-space: nowrap; border-left: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); }
+    /* Columnar table for arrays of like objects (skills, experience, provenance, ...) */
+    table.rows-table {
+      border-collapse: collapse; width: 100%; font-size: 0.82rem;
+      border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    }
+    table.rows-table th {
+      text-align: left; background: var(--bg); color: var(--muted);
+      font-weight: 600; font-size: 0.74rem; padding: 5px 10px;
+      border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); white-space: nowrap;
+    }
+    table.rows-table td {
+      padding: 5px 10px; border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line); vertical-align: top;
+    }
+    table.rows-table th:last-child, table.rows-table td:last-child { border-right: none; }
+    table.rows-table tbody tr:last-child td { border-bottom: none; }
+    .rows-table .row-idx { color: var(--accent); font-weight: 600; width: 1%; white-space: nowrap; text-align: right; }
+    table.kv-nested { border-collapse: collapse; width: 100%; }
+    table.kv-nested th {
+      text-align: left; font-weight: 600; color: var(--muted);
+      padding: 3px 12px 3px 0; vertical-align: top; white-space: nowrap; font-size: 0.82rem;
+    }
+    table.kv-nested td { padding: 3px 0; vertical-align: top; }
+    .nested-item { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+    .nested-item:first-child { padding-top: 0; }
+    .nested-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .nested-idx { font-size: 0.72rem; color: var(--accent); font-weight: 600; margin-bottom: 2px; }
+    .chip {
+      display: inline-block; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; font-size: 0.8rem;
+    }
+    .prov-chip {
+      display: inline-block; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 6px; padding: 1px 6px; margin: 1px 3px 1px 0; font-size: 0.74rem;
+    }
+    .muted-cell { color: var(--muted); }
+    .nullv { background: var(--null-bg); color: #7f1d1d; border-radius: 3px; padding: 0 4px; font-family: var(--mono); font-size: 0.8rem; }
+    .withheld { background: #fde68a; color: #713f12; border-radius: 3px; padding: 0 4px; }
   </style>
 </head>
 <body>
@@ -167,6 +243,15 @@
           <div class="row">
             <button id="btn-clear-files" type="button">Clear files</button>
           </div>
+
+          <label for="github" style="margin-top: 16px;">GitHub usernames</label>
+          <input id="github" type="text" placeholder="e.g. octocat, torvalds"
+                 style="width: 100%; font-size: 0.9rem; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;" />
+          <p class="hint">
+            Optional &mdash; comma/space separated handles or profile URLs. Each is
+            fetched live from <code>api.github.com/users/&lt;username&gt;</code> and
+            merged through the same pipeline.
+          </p>
         </div>
 
         <div class="card">
@@ -208,15 +293,27 @@
             </div>
             <div class="tab-body">
               <div id="panel-canonical" class="tab-panel">
+                <div class="view-switch" data-scope="canonical">
+                  <button class="view-btn active" type="button" data-view="table">Table</button>
+                  <button class="view-btn" type="button" data-view="json">JSON</button>
+                </div>
                 <p class="hint"><code>null</code> / withheld fields are highlighted &mdash; the pipeline is honestly empty rather than wrong.</p>
-                <pre id="profile"></pre>
+                <div id="profile-table" class="view-table"></div>
+                <pre id="profile" class="view-json hidden"></pre>
               </div>
               <div id="panel-projected" class="tab-panel hidden">
-                <p class="hint">Bare values matching the requested schema. With no config this is the plain canonical schema.</p>
-                <pre id="projected"></pre>
-                <div id="projected-meta-card" class="hidden" style="margin-top: 14px;">
-                  <p class="hint">Per-field <code>confidence</code> / <code>provenance</code>, shown only when those toggles are on.</p>
-                  <pre id="projected-meta"></pre>
+                <div class="view-switch" data-scope="projected">
+                  <button class="view-btn active" type="button" data-view="table">Table</button>
+                  <button class="view-btn" type="button" data-view="json">JSON</button>
+                </div>
+                <p class="hint">Bare values matching the requested schema. With no config this is the plain canonical schema. Per-field <code>confidence</code> / <code>provenance</code> appear as columns only when those toggles are on.</p>
+                <div id="projected-table" class="view-table"></div>
+                <div id="projected-json" class="view-json hidden">
+                  <pre id="projected"></pre>
+                  <div id="projected-meta-card" class="hidden" style="margin-top: 14px;">
+                    <p class="hint">Per-field <code>confidence</code> / <code>provenance</code>, shown only when those toggles are on.</p>
+                    <pre id="projected-meta"></pre>
+                  </div>
                 </div>
               </div>
             </div>
@@ -310,6 +407,150 @@
         .replace(/&quot;withheld_low_confidence&quot;/g, '<span class="withheld">&quot;withheld_low_confidence&quot;</span>');
     }
 
+    // --- Table rendering: turn JSON values into field / subfield / value tables ---
+
+    const MUTED_DASH = '<span class="muted-cell">&mdash;</span>';
+    const EMPTY_CELL = '<span class="muted-cell">empty</span>';
+
+    function isPlainObject(v) {
+      return v !== null && typeof v === "object" && !Array.isArray(v);
+    }
+
+    // Renders a single value into a cell: scalars inline, scalar arrays as chips,
+    // objects and object-arrays as compact nested tables.
+    function valueCellHtml(value) {
+      if (value === null || value === undefined) return '<span class="nullv">null</span>';
+      if (typeof value === "string") {
+        if (value === "withheld_low_confidence") {
+          return '<span class="withheld">withheld_low_confidence</span>';
+        }
+        return escapeHtml(value);
+      }
+      if (typeof value === "number" || typeof value === "boolean") {
+        return escapeHtml(String(value));
+      }
+      if (Array.isArray(value)) {
+        if (!value.length) return EMPTY_CELL;
+        const allScalar = value.every((v) => v === null || typeof v !== "object");
+        if (allScalar) {
+          return value.map((v) => `<span class="chip">${valueCellHtml(v)}</span>`).join("");
+        }
+        return objectArrayTableHtml(value);
+      }
+      return objectTableHtml(value);
+    }
+
+    // Renders an array of like objects as one columnar table: shared keys become
+    // columns and each element is a row, so similar fields line up together.
+    function objectArrayTableHtml(arr) {
+      const cols = [];
+      arr.forEach((item) => {
+        if (isPlainObject(item)) {
+          Object.keys(item).forEach((k) => { if (!cols.includes(k)) cols.push(k); });
+        }
+      });
+      if (!cols.length) {
+        return arr.map((v) => `<span class="chip">${valueCellHtml(v)}</span>`).join("");
+      }
+      const head = `<tr><th class="row-idx">#</th>${cols.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+      const body = arr.map((item, i) => {
+        const cells = cols.map((c) => {
+          const v = isPlainObject(item) ? item[c] : undefined;
+          return `<td>${v === undefined ? MUTED_DASH : valueCellHtml(v)}</td>`;
+        }).join("");
+        return `<tr><td class="row-idx">${i + 1}</td>${cells}</tr>`;
+      }).join("");
+      return `<table class="rows-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+    }
+
+    function objectTableHtml(obj) {
+      if (!isPlainObject(obj)) return valueCellHtml(obj);
+      const keys = Object.keys(obj);
+      if (!keys.length) return EMPTY_CELL;
+      const rows = keys.map((k) =>
+        `<tr><th>${escapeHtml(k)}</th><td>${valueCellHtml(obj[k])}</td></tr>`
+      ).join("");
+      return `<table class="kv-nested"><tbody>${rows}</tbody></table>`;
+    }
+
+    // Splits a top-level value into one or more {sub, value} rows.
+    function buildSubRows(val) {
+      if (!val || typeof val !== "object") {
+        return [{ sub: MUTED_DASH, value: valueCellHtml(val) }];
+      }
+      if (Array.isArray(val)) {
+        if (!val.length) return [{ sub: MUTED_DASH, value: EMPTY_CELL }];
+        const allScalar = val.every((v) => v === null || typeof v !== "object");
+        if (allScalar) return [{ sub: MUTED_DASH, value: valueCellHtml(val) }];
+        return [{ sub: MUTED_DASH, value: objectArrayTableHtml(val) }];
+      }
+      const keys = Object.keys(val);
+      if (!keys.length) return [{ sub: MUTED_DASH, value: EMPTY_CELL }];
+      return keys.map((k) => ({ sub: escapeHtml(k), value: valueCellHtml(val[k]) }));
+    }
+
+    function provenanceHtml(prov) {
+      if (!prov || !prov.length) return MUTED_DASH;
+      return prov.map((p) => {
+        const note = p.note ? ` <em>(${escapeHtml(p.note)})</em>` : "";
+        return `<span class="prov-chip">${escapeHtml(p.source)} &middot; ${escapeHtml(p.method)}${note}</span>`;
+      }).join(" ");
+    }
+
+    function kvTableHtml(entries, meta) {
+      const hasMeta = meta
+        ? Object.values(meta).some((m) => m && (m.confidence != null || (m.provenance && m.provenance.length)))
+        : false;
+      const rows = [];
+      for (const [key, val] of entries) {
+        const subRows = buildSubRows(val);
+        const m = (meta && meta[key]) || null;
+        subRows.forEach((sr, idx) => {
+          let cells = "";
+          if (idx === 0) {
+            cells += `<td class="field-cell" rowspan="${subRows.length}">${escapeHtml(key)}</td>`;
+          }
+          cells += `<td class="sub-cell">${sr.sub}</td><td class="val-cell">${sr.value}</td>`;
+          if (hasMeta && idx === 0) {
+            const conf = (m && m.confidence != null) ? Number(m.confidence).toFixed(2) : "&mdash;";
+            cells += `<td class="meta-cell" rowspan="${subRows.length}">${conf}</td>`;
+            cells += `<td class="meta-cell" rowspan="${subRows.length}">${provenanceHtml(m && m.provenance)}</td>`;
+          }
+          rows.push(`<tr>${cells}</tr>`);
+        });
+      }
+      const head = hasMeta
+        ? "<tr><th>Field</th><th>Subfield</th><th>Value</th><th>Confidence</th><th>Provenance</th></tr>"
+        : "<tr><th>Field</th><th>Subfield</th><th>Value</th></tr>";
+      return `<table class="kv-table"><thead>${head}</thead><tbody>${rows.join("")}</tbody></table>`;
+    }
+
+    function renderProfileTable(profiles) {
+      const el = $("profile-table");
+      if (!profiles.length) {
+        el.innerHTML = '<p class="ok-note">No profiles produced.</p>';
+        return;
+      }
+      el.innerHTML = profiles.map((p, i) => {
+        const cap = profiles.length > 1
+          ? `<h3 class="tbl-cap">Candidate ${i + 1}${p.full_name ? ` <span class="muted">&middot; ${escapeHtml(p.full_name)}</span>` : ""}</h3>`
+          : "";
+        return `<div class="tbl-block">${cap}${kvTableHtml(Object.entries(p), null)}</div>`;
+      }).join("");
+    }
+
+    function renderProjectedTable(projected, metaList) {
+      const el = $("projected-table");
+      if (!projected.length) {
+        el.innerHTML = '<p class="ok-note">No projected output.</p>';
+        return;
+      }
+      el.innerHTML = projected.map((view, i) => {
+        const cap = projected.length > 1 ? `<h3 class="tbl-cap">Candidate ${i + 1}</h3>` : "";
+        return `<div class="tbl-block">${cap}${kvTableHtml(Object.entries(view), (metaList || [])[i] || null)}</div>`;
+      }).join("");
+    }
+
     function baseName(path) {
       const parts = String(path).split(/[\\/]/);
       return parts[parts.length - 1] || path;
@@ -367,9 +608,15 @@
     function render(data) {
       renderBanner(data.summary);
       renderQuarantine(data.quarantined || []);
-      $("profile").innerHTML = highlightJson(data.profiles || []);
-      $("projected").innerHTML = highlightJson(data.projected || []);
+      const profiles = data.profiles || [];
+      const projected = data.projected || [];
       const meta = data.projected_meta || [];
+
+      renderProfileTable(profiles);
+      renderProjectedTable(projected, meta);
+
+      $("profile").innerHTML = highlightJson(profiles);
+      $("projected").innerHTML = highlightJson(projected);
       const hasMeta = meta.some((m) => m && Object.keys(m).length > 0);
       $("projected-meta-card").classList.toggle("hidden", !hasMeta);
       if (hasMeta) {
@@ -381,8 +628,9 @@
 
     async function onTransform() {
       clearError();
-      if (!selectedFiles.length) {
-        showError("Please select at least one source file.");
+      const githubHandles = $("github").value.trim();
+      if (!selectedFiles.length && !githubHandles) {
+        showError("Please select at least one source file or enter a GitHub username.");
         return;
       }
       const btn = $("btn-run");
@@ -394,6 +642,9 @@
         const form = new FormData();
         for (const file of selectedFiles) {
           form.append("files", file);
+        }
+        if (githubHandles) {
+          form.append("github", githubHandles);
         }
         // Toggle off -> empty config (full default canonical projection).
         const useConfig = $("config-toggle").checked;
@@ -436,6 +687,20 @@
       $("config").value = JSON.stringify(CUSTOM_CONFIG, null, 2);
     });
     $("btn-run").addEventListener("click", onTransform);
+
+    // View switch: toggle Table vs JSON within a panel.
+    document.querySelectorAll(".view-switch").forEach((group) => {
+      const panel = group.closest(".tab-panel");
+      group.querySelectorAll(".view-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          group.querySelectorAll(".view-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const showTable = btn.dataset.view === "table";
+          panel.querySelectorAll(".view-table").forEach((el) => el.classList.toggle("hidden", !showTable));
+          panel.querySelectorAll(".view-json").forEach((el) => el.classList.toggle("hidden", showTable));
+        });
+      });
+    });
 
     // Result tabs: switch between the canonical profile and the projected output.
     document.querySelectorAll(".tab").forEach((tab) => {

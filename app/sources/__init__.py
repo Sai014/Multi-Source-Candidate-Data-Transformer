@@ -9,6 +9,7 @@ from app.sources.detect import (
     find_adapter,
     ingest_paths,
 )
+from app.sources.github import GitHubAdapter, GitHubFetcher
 from app.sources.resume import (
     ProseExtractor,
     ResumeAdapter,
@@ -19,6 +20,8 @@ from app.sources.resume import (
 __all__ = [
     "ADAPTER_REGISTRY",
     "AtsAdapter",
+    "GitHubAdapter",
+    "GitHubFetcher",
     "IngestResult",
     "ProseExtractor",
     "QuarantineRecord",
