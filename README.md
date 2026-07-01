@@ -34,6 +34,24 @@ Alternatively, install just the runtime dependencies from `requirements.txt`:
 python -m pip install -r requirements.txt
 ```
 
+## Environment
+
+No credentials are required for the default setup. Résumé NER uses GLiNER with the
+public Hugging Face model `urchade/gliner_medium-v2.1`, which downloads and runs
+locally — GLiNER has no API or access key.
+
+Optional Hugging Face Hub variables (for gated/private models or higher download
+rate limits) are documented in `.env.example`:
+
+```bash
+cp .env.example .env
+# edit .env if needed — uncomment HF_TOKEN or HUGGINGFACE_HUB_TOKEN
+```
+
+`huggingface_hub` reads `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` from the environment
+automatically; no code changes are needed. After the model is cached once, set
+`HF_HUB_OFFLINE=1` to run without network access.
+
 ## Common tasks
 
 With `make` (macOS/Linux, or Windows with `make` installed):
@@ -84,8 +102,9 @@ uvicorn app.api.main:app --reload
 ```
 
 On startup the server downloads and loads the GLiNER NER model (one-time per
-machine unless cached). The first transform with a résumé then runs without a
-Hugging Face fetch.
+machine unless cached). See [Environment](#environment) for optional Hugging Face
+Hub settings. The first transform with a résumé then runs without a Hugging Face
+fetch.
 
 Select one or more source files (try `samples/ats_sample.json`,
 `samples/resume_sample.txt`, and `samples/broken_source.json` together), optionally
@@ -127,10 +146,11 @@ python -m app.cli --inputs samples/ats_sample.json samples/resume_sample.txt \
 app/
   domain/        # models, enums
   normalize/     # registry + normalizers
-  sources/       # adapters + detection
+  sources/       # adapters + detection (resume/ package for résumé parsing)
   pipeline/      # ledger, resolve, fuse, project, validate, orchestrate
   api/           # FastAPI app (/health, /transform) + static test UI
   cli.py         # CLI entrypoint (same output as the API)
 samples/         # ats_sample.json, resume_sample.txt, github_octocat.github, broken_source.json, config_custom.json
 tests/           # pytest suite
+.env.example     # optional Hugging Face Hub env vars (copy to .env)
 ```
