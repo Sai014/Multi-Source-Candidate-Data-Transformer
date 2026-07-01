@@ -23,7 +23,7 @@ METHOD_RELIABILITY: dict[str, float] = {
     "direct_map": 1.0,
     "structured_parse": 0.8,
     "regex_prose": 0.6,
-    "ner": 0.5,
+    "ner": 0.75,
 }
 
 SOURCE_PRIORITY: dict[str, int] = {
