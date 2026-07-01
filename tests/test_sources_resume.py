@@ -90,12 +90,8 @@ poral, FastAPI
 
 @pytest.fixture(autouse=True)
 def _mock_gliner(request: pytest.FixtureRequest) -> Iterator[None]:
-    """Keep resume tests fast and deterministic without loading the GLiNER model."""
-    if request.node.get_closest_marker("no_gliner_mock") is not None:
-        yield
-        return
-    with patch("app.sources.resume._predict_entities", return_value=[]):
-        yield
+    """Resume-module tests may override the global GLiNER mock per test."""
+    yield
 
 
 def _fields(claims: list[Claim], field: str) -> list[Claim]:
@@ -104,7 +100,7 @@ def _fields(claims: list[Claim], field: str) -> list[Claim]:
 
 def test_all_methods_fire_on_resume(_mock_gliner: None) -> None:
     """Running the adapter exercises structured, prose, and NER strategies."""
-    with patch("app.sources.resume._predict_entities", return_value=_SAMPLE_ENTITIES):
+    with patch("app.sources.resume.extractors._predict_entities", return_value=_SAMPLE_ENTITIES):
         claims = ResumeAdapter().extract(SAMPLES / "resume_sample.txt")
     methods = {claim.method for claim in claims}
     assert ExtractionMethod.STRUCTURED_PARSE in methods
@@ -167,9 +163,18 @@ def test_extractors_never_raise_on_odd_formatting() -> None:
         assert isinstance(GlinerExtractor().extract(odd), list)
 
 
+def test_preload_gliner_model_warms_loader() -> None:
+    """Startup preload delegates to the cached model loader."""
+    with patch("app.sources.resume.gliner._load_gliner_model") as load:
+        from app.sources.resume import preload_gliner_model
+
+        preload_gliner_model()
+        load.assert_called_once()
+
+
 def test_gliner_extractor_yields_ner_claims(_mock_gliner: None) -> None:
     """The GLiNER extractor emits NER claims with mapped canonical fields."""
-    with patch("app.sources.resume._predict_entities", return_value=_SAMPLE_ENTITIES):
+    with patch("app.sources.resume.extractors._predict_entities", return_value=_SAMPLE_ENTITIES):
         claims = GlinerExtractor().extract(_RESUME_TEXT)
     assert all(c.method is ExtractionMethod.NER for c in claims)
     assert all(c.source is SourceType.RESUME for c in claims)
@@ -255,8 +260,8 @@ def test_predict_entities_runs_one_call_per_chunk() -> None:
             calls.append(chunk)
             return []
 
-    with patch("app.sources.resume._load_gliner_model", return_value=_FakeModel()):
-        from app.sources.resume import _predict_entities
+    with patch("app.sources.resume.gliner._load_gliner_model", return_value=_FakeModel()):
+        from app.sources.resume.gliner import _predict_entities
 
         assert _predict_entities(text) == []
     assert len(calls) == len(chunks)

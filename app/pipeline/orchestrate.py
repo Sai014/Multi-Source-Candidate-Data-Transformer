@@ -15,14 +15,13 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from app.domain.models import CanonicalProfile, Claim, Config
+from app.domain.models import CanonicalProfile, Config
 from app.pipeline.fuse import fuse
-from app.pipeline.ledger import ClaimLedger
 from app.pipeline.project import Projection, ProjectionReport, project
 from app.pipeline.resolve import cluster
 from app.pipeline.validate import validate_view
 from app.sources import ADAPTER_REGISTRY, SourceAdapter
-from app.sources.detect import QuarantineRecord, extract_isolated, find_adapter
+from app.sources.detect import QuarantineRecord, ingest_paths
 
 
 class RunResult(BaseModel):
@@ -38,28 +37,6 @@ class RunResult(BaseModel):
     quarantined: list[QuarantineRecord] = Field(default_factory=list)
 
 
-def _extract_records(
-    input_paths: Sequence[Path],
-    adapters: Sequence[SourceAdapter],
-    quarantined: list[QuarantineRecord],
-) -> list[list[Claim]]:
-    """Extract one claim record per path, quarantining unroutable/failing sources."""
-    records: list[list[Claim]] = []
-    for path in input_paths:
-        adapter = find_adapter(path, adapters)
-        if adapter is None:
-            quarantined.append(
-                QuarantineRecord(source=None, path=str(path), reason="no_adapter")
-            )
-            continue
-        outcome = extract_isolated(adapter, path)
-        if isinstance(outcome, QuarantineRecord):
-            quarantined.append(outcome)
-        else:
-            records.append(outcome)
-    return records
-
-
 def run(
     input_paths: Sequence[Path],
     config: Config,
@@ -72,16 +49,9 @@ def run(
     and adapters; never raises on bad input.
     """
     active = ADAPTER_REGISTRY if adapters is None else adapters
-    quarantined: list[QuarantineRecord] = []
-
-    extracted = _extract_records(input_paths, active, quarantined)
-    # A source that yields no claims contributes nothing; dropping it here avoids
-    # emitting a phantom empty candidate.
-    records = [record for record in extracted if record]
-
-    ledger = ClaimLedger()
-    for record in records:
-        ledger.extend(record)
+    ingest = ingest_paths(input_paths, active)
+    records = [list(record) for record in ingest.records]
+    quarantined = list(ingest.quarantined)
 
     profiles: list[CanonicalProfile] = []
     projections: list[Projection] = []

@@ -40,6 +40,7 @@ class IngestResult:
     """Outcome of ingesting a batch of source paths."""
 
     ledger: ClaimLedger
+    records: tuple[tuple[Claim, ...], ...]
     quarantined: tuple[QuarantineRecord, ...]
 
 
@@ -87,6 +88,7 @@ def ingest_paths(
 
     active = ADAPTER_REGISTRY if adapters is None else adapters
     ledger = ClaimLedger()
+    records: list[list[Claim]] = []
     quarantined: list[QuarantineRecord] = []
 
     for path in paths:
@@ -99,7 +101,12 @@ def ingest_paths(
         outcome = extract_isolated(adapter, path)
         if isinstance(outcome, QuarantineRecord):
             quarantined.append(outcome)
-        else:
+        elif outcome:
             ledger.extend(outcome)
+            records.append(outcome)
 
-    return IngestResult(ledger=ledger, quarantined=tuple(quarantined))
+    return IngestResult(
+        ledger=ledger,
+        records=tuple(tuple(record) for record in records),
+        quarantined=tuple(quarantined),
+    )

@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import re
 import tempfile
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -22,11 +24,24 @@ from pydantic import BaseModel, ValidationError
 from app.api.schemas import TransformResponse, build_transform_response
 from app.domain.models import Config
 from app.pipeline.orchestrate import run
-from app.sources.github import handle_to_stem
+from app.sources.github_staging import stage_github_handles
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Warm GLiNER on startup so the first transform does not block on a download."""
+    from app.sources.resume import preload_gliner_model
+
+    preload_gliner_model()
+    yield
+
 
 app = FastAPI(
     title="Multi-Source Candidate Data Transformer",
     version="0.1.0",
+    lifespan=_lifespan,
 )
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -92,15 +107,7 @@ def _split_handles(raw: str | None) -> list[str]:
 
 def _stage_github(handles: list[str], tmp_dir: Path, start_index: int) -> list[Path]:
     """Write each GitHub URL/handle to its own ``.github`` source file for routing."""
-    paths: list[Path] = []
-    for offset, handle in enumerate(handles):
-        index = start_index + offset
-        sub_dir = tmp_dir / f"gh_{index}"
-        sub_dir.mkdir(parents=True, exist_ok=True)
-        path = sub_dir / f"{handle_to_stem(handle, f'github_{index}')}.github"
-        path.write_text(handle, encoding="utf-8")
-        paths.append(path)
-    return paths
+    return stage_github_handles(handles, tmp_dir, start_index=start_index)
 
 
 @app.post("/transform", response_model=TransformResponse)
@@ -126,6 +133,12 @@ async def transform(
         paths: list[Path] = []
         for index, upload in enumerate(files):
             data = await upload.read()
+            if len(data) > MAX_UPLOAD_BYTES:
+                name = Path(upload.filename).name if upload.filename else f"source_{index}"
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File {name!r} exceeds the {MAX_UPLOAD_BYTES} byte upload limit",
+                )
             paths.append(_write_temp(upload, data, tmp_dir, index))
         paths.extend(_stage_github(handles, tmp_dir, len(paths)))
         result = run(paths, parsed_config)

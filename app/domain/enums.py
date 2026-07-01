@@ -25,7 +25,6 @@ class ExtractionMethod(StrEnum):
     STRUCTURED_PARSE = "structured_parse"
     REGEX_PROSE = "regex_prose"
     NER = "ner"
-    NLP_INFERRED = "nlp_inferred"
 
 
 class OnMissing(StrEnum):

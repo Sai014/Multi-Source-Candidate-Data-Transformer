@@ -76,6 +76,7 @@ def test_bad_source_does_not_stop_other_sources() -> None:
         adapters=[RaisingAdapter(), GoodAdapter()],
     )
     assert [c.value for c in result.ledger.claims] == ["second", "third"]
+    assert tuple(c.value for record in result.records for c in record) == ("second", "third")
     assert len(result.quarantined) == 1
     assert result.quarantined[0].path == "first.bad"
     assert result.quarantined[0].source is SourceType.RESUME

@@ -17,10 +17,12 @@ import json
 import tempfile
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from app.api.schemas import TransformResponse, build_transform_response
 from app.domain.models import Config
 from app.pipeline.orchestrate import run
-from app.sources.github import handle_to_stem
+from app.sources.github_staging import stage_github_handles
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -67,18 +69,20 @@ def load_config(value: str | None) -> Config:
     """Load a projection config from a path; ``None``/``"none"`` is the default."""
     if value is None or value.strip().lower() == "none":
         return Config()
-    parsed = json.loads(Path(value).read_text(encoding="utf-8"))
-    return Config.model_validate(parsed)
+    path = Path(value)
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Invalid config file {path}: {exc}") from exc
+    try:
+        return Config.model_validate(parsed)
+    except ValidationError as exc:
+        raise SystemExit(f"Invalid config: {exc}") from exc
 
 
 def _stage_github(handles: list[str], tmp_dir: Path) -> list[Path]:
     """Write each GitHub URL/handle to a ``.github`` file the adapter can route."""
-    paths: list[Path] = []
-    for index, handle in enumerate(handles):
-        path = tmp_dir / f"gh_{index}_{handle_to_stem(handle, f'github_{index}')}.github"
-        path.write_text(handle, encoding="utf-8")
-        paths.append(path)
-    return paths
+    return stage_github_handles(handles, tmp_dir, start_index=0)
 
 
 def transform_inputs(

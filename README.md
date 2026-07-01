@@ -83,6 +83,10 @@ uvicorn app.api.main:app --reload
 # open http://127.0.0.1:8000/
 ```
 
+On startup the server downloads and loads the GLiNER NER model (one-time per
+machine unless cached). The first transform with a résumé then runs without a
+Hugging Face fetch.
+
 Select one or more source files (try `samples/ats_sample.json`,
 `samples/resume_sample.txt`, and `samples/broken_source.json` together), optionally
 load the **Custom example** config, and click **Transform**. The result shows a
